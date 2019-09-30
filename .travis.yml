@@ -1,0 +1,34 @@
+language: java
+jdk: openjdk8
+
+branches:
+  only:
+  - master
+  - /^v\d+\.\d+.*$/ # tagged versions
+git:
+  depth: false
+cache:
+  directories:
+  - $HOME/.local
+  - $HOME/.cache
+  - $HOME/.sbt
+
+before_install:
+  - export PATH="$HOME/.local/share/coursier/bin:$PATH"
+  - ./project/travis-setup.sh
+
+stages:
+  - name: test
+  - name: release
+    if: (branch = master AND type = push) OR (tag IS present)
+
+script: sbt ++$SCALA_VERSION test
+jobs:
+  include:
+  - env: SCALA_VERSION=2.13.1
+  - env: SCALA_VERSION=2.12.10
+  - env: SCALA_VERSION=2.11.12
+  - name: formatting
+    script: scalafmt --test
+  # - stage: release
+  # - script: sbt ci-release
