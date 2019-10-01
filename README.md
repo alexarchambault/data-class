@@ -106,3 +106,12 @@ import dataclass._
   info: Option[String] = None
 )
 ```
+
+## Related work
+
+- [contraband](https://github.com/sbt/contraband) relies on code generation from
+JSON or a custom schema language to generate classes that can be evolved in a
+binary compatible way
+- [stalagmite](https://gitlab.com/fommil/attic/tree/master/stalagmite) generates
+case classes with custom features via some macros (but doesn't aim at helping
+maintaining binary compatibility)
