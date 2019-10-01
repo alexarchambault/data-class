@@ -6,7 +6,10 @@ import scala.annotation.tailrec
 private[dataclass] class Macros(val c: Context) extends ImplTransformers {
   import c.universe._
 
-  private val debug = java.lang.Boolean.getBoolean("dataclass.macros.debug")
+  private val debug = sys.env
+    .get("DATACLASS_MACROS_DEBUG")
+    .map(_.toBoolean)
+    .getOrElse(java.lang.Boolean.getBoolean("dataclass.macros.debug"))
 
   private class Transformer(publicConstructor: Boolean)
       extends ImplTransformer {
