@@ -17,6 +17,12 @@ object ZeroFieldTests extends TestSuite {
       val expected = "Foo()"
       assert(str == expected)
     }
+    "tuple" - {
+      val foo = Foo()
+      val t = foo.tuple
+      assert(t == ())
+    }
+
     "class constructor is private" - {
       illTyped("""
       val foo = new Foo()

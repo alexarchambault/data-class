@@ -68,6 +68,25 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             fromFields || fromStats
           }
 
+          val hasTuple = {
+            def fromStats = stats.exists {
+              case DefDef(_, nme, tparams, vparamss, _, _)
+                  if nme.decodedName.toString == "tuple" && tparams.isEmpty && vparamss
+                    .forall(_.isEmpty) =>
+                true
+              case t @ ValDef(_, name, _, _)
+                  if name.decodedName.toString == "tuple" =>
+                true
+              case _ =>
+                false
+            }
+
+            val fromFields =
+              allParams.exists(_.name.decodedName.toString() == "tuple")
+
+            fromFields || fromStats
+          }
+
           val namedArgs = allParams.map { p =>
             q"${p.name}=this.${p.name}"
           }
@@ -133,6 +152,19 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                     37 * code
                   }
                """
+              )
+            }
+
+          val tupleMethod =
+            if (hasTuple || allParams.lengthCompare(22) > 0) Nil
+            else if (allParams.isEmpty)
+              Seq(q"def tuple = ()")
+            else {
+              definitions.TupleClass.seq
+              val fields = allParams.map(p => q"this.${p.name}")
+              val tupleName = TermName(s"Tuple${allParams.length}")
+              Seq(
+                q"def tuple = _root_.scala.$tupleName(..$fields)"
               )
             }
 
@@ -284,6 +316,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               ..$toStringMethod
               ..$equalMethods
               ..$hashCodeMethod
+              ..$tupleMethod
               ..$productMethods
           }"""
 

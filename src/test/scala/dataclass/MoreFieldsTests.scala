@@ -5,6 +5,18 @@ import utest._
 
 object MoreFieldsTests extends TestSuite {
   val tests = Tests {
+    "tuple" - {
+      @data class Bar(
+          n: Int,
+          s: String,
+          b: Boolean = true,
+          d: Double = 1.0
+      )
+      val foo = Bar(1, "a", false, 1.2)
+      val t = foo.tuple
+      assert(t == (1, "a", false, 1.2))
+    }
+
     "since annotation" - {
       * - {
         illTyped(

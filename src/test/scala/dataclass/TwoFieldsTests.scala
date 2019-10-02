@@ -52,6 +52,12 @@ object TwoFieldsTests extends TestSuite {
       assert(foo4.other == "u")
     }
 
+    "tuple" - {
+      val foo = Foo(1, "a")
+      val t = foo.tuple
+      assert(t == (1, "a"))
+    }
+
     "private field" - {
       @data class Bar(private val n: Int, s: String)
       val bar = Bar(2, "a")

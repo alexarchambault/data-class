@@ -40,6 +40,12 @@ object OneFieldTests extends TestSuite {
       assert(foo2.a == 2)
     }
 
+    "tuple" - {
+      val foo = Foo(1)
+      val t = foo.tuple
+      assert(t == Tuple1(1))
+    }
+
     "private field" - {
       @data class Bar(private val n: Int)
       val bar = Bar(2)
