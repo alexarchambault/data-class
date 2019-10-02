@@ -3,6 +3,8 @@ package dataclass
 import shapeless.test.illTyped
 import utest._
 
+import scala.concurrent.Future
+
 object TwoFieldsTests extends TestSuite {
   val tests = Tests {
     @data class Foo(a: Int, other: String)
@@ -99,6 +101,68 @@ object TwoFieldsTests extends TestSuite {
         assert(false)
       } catch {
         case _: IndexOutOfBoundsException =>
+      }
+    }
+
+    "type params" - {
+      "one" - {
+        "used" - {
+          @data class Bar[T](t: T, n: Double)
+          val barI = Bar[Int](2, 1.0)
+          val barI2 = Bar[Int](3, 1.2)
+          val barI3 = Bar[Int](2, 1.0)
+          val barS = Bar[String]("ab", 2.1)
+          assert(barI != barS)
+          assert(barI != barI2)
+          assert(barI == barI3)
+        }
+
+        "unused" - {
+          @data class Bar[T](n: Int, s: String)
+          val barI = Bar[Int](2, "a")
+          val barI2 = Bar[Int](3, "b")
+          val barI3 = Bar[Int](2, "a")
+          val barS = Bar[String](4, "c")
+          val barS2 = Bar[String](2, "a")
+          assert(barI != barS)
+          assert(barI != barI2)
+          assert(barI == barI3)
+          assert(barS != barS2)
+          assert(barI == barS2)
+        }
+      }
+
+      "two" - {
+        @data class Bar[T, U](t: T, u: U)
+        val barI = Bar[Int, Double](1, 1.0)
+        val barS = Bar[String, Long]("a", 2L)
+        assert(barI != barS)
+      }
+
+      "three" - {
+        @data class Bar[T, U, V](u: U, v: V)
+        val barI = Bar[Int, Double, Int](1.1, 2)
+        val barS = Bar[String, Long, Long](1L, 3L)
+        assert(barI != barS)
+      }
+
+      "higher kind" - {
+        "one" - {
+          @data class Bar[F[_]](f1: F[Int], f2: F[String])
+          val barF = Bar[Future](
+            Future.successful(2),
+            Future.failed(new RuntimeException("nope"))
+          )
+          val barL = Bar[List](List(3), List("a", "b"))
+          assert(barF != barL)
+        }
+
+        "two" - {
+          @data class Bar[F[_], G[_]](f: F[Int], g: G[String])
+          val barF = Bar[Future, Vector](Future.successful(2), Vector("a", "b"))
+          val barL = Bar[List, Future](List(3), Future.successful("s"))
+          assert(barF != barL)
+        }
       }
     }
   }

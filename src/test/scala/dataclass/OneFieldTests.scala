@@ -3,6 +3,8 @@ package dataclass
 import shapeless.test.illTyped
 import utest._
 
+import scala.concurrent.Future
+
 object OneFieldTests extends TestSuite {
   val tests = Tests {
     @data class Foo(a: Int)
@@ -103,6 +105,56 @@ object OneFieldTests extends TestSuite {
         assert(false)
       } catch {
         case _: IndexOutOfBoundsException =>
+      }
+    }
+
+    "type params" - {
+      "one" - {
+        "used" - {
+          @data class Bar[T](t: T)
+          val barI = Bar[Int](2)
+          val barI2 = Bar[Int](3)
+          val barI3 = Bar[Int](2)
+          val barS = Bar[String]("ab")
+          assert(barI != barS)
+          assert(barI != barI2)
+          assert(barI == barI3)
+        }
+
+        "unused" - {
+          @data class Bar[T](n: Int)
+          val barI = Bar[Int](2)
+          val barI2 = Bar[Int](3)
+          val barI3 = Bar[Int](2)
+          val barS = Bar[String](4)
+          val barS2 = Bar[String](2)
+          assert(barI != barS)
+          assert(barI != barI2)
+          assert(barI == barI3)
+          assert(barS != barS2)
+          assert(barI == barS2)
+        }
+      }
+
+      "two" - {
+        @data class Bar[T, U](u: U)
+        val barI = Bar[Int, Double](1.0)
+        val barS = Bar[String, Long](2L)
+        assert(barI != barS)
+      }
+
+      "three" - {
+        @data class Bar[T, U, V](v: V)
+        val barI = Bar[Int, Double, Int](2)
+        val barS = Bar[String, Long, Long](3L)
+        assert(barI != barS)
+      }
+
+      "higher kind" - {
+        @data class Bar[F[_]](f: F[Int])
+        val barF = Bar[Future](Future.successful(2))
+        val barL = Bar[List](List(3))
+        assert(barF != barL)
       }
     }
   }

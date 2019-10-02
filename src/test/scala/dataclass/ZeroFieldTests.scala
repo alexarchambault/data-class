@@ -3,6 +3,8 @@ package dataclass
 import shapeless.test.illTyped
 import utest._
 
+import scala.concurrent.Future
+
 object ZeroFieldTests extends TestSuite {
   val tests = Tests {
     @data class Foo()
@@ -21,6 +23,36 @@ object ZeroFieldTests extends TestSuite {
       val foo = Foo()
       val t = foo.tuple
       assert(t == ())
+    }
+
+    "type params" - {
+      "one" - {
+        @data class Bar[T]()
+        val barI = Bar[Int]()
+        val barS = Bar[String]()
+        assert(barI == barS) // type erasure, both instances are the same at runtime
+      }
+
+      "two" - {
+        @data class Bar[T, U]()
+        val barI = Bar[Int, Double]()
+        val barS = Bar[String, Long]()
+        assert(barI == barS) // type erasure, both instances are the same at runtime
+      }
+
+      "three" - {
+        @data class Bar[T, U, V]()
+        val barI = Bar[Int, Double, Int]()
+        val barS = Bar[String, Long, Long]()
+        assert(barI == barS) // type erasure, both instances are the same at runtime
+      }
+
+      "higher kind" - {
+        @data class Bar[F[_]]()
+        val barF = Bar[Future]()
+        val barL = Bar[List]()
+        assert(barF == barL) // type erasure, both instances are the same at runtime
+      }
     }
 
     "class constructor is private" - {

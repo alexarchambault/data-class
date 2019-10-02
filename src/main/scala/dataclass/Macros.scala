@@ -109,6 +109,21 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               )}: ${p.tpe} = this.${p.name}"
             }
 
+          val wildcardedTparams = tparams.map {
+            case TypeDef(mods, name, tparams, rhs) if tparams.isEmpty =>
+              tq"$WildcardType"
+            case TypeDef(mods, name, tparams, rhs) =>
+              val params = tparams.indices.map(n => s"X$n").map { name =>
+                val n = TypeName(name)
+                val s = tq"$n".symbol
+                internal.typeDef(s)
+              }
+              tq"({type L[..$params]=$WildcardType})#L"
+          }
+          val tparamsRef = tparams.map { t =>
+            tq"${t.name}"
+          }
+
           val equalMethods = {
             val fldChecks = paramss.flatten
               .map { param =>
@@ -126,12 +141,12 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             Seq(
               q"""
                 override def canEqual(obj: Any): _root_.scala.Boolean =
-                  obj != null && obj.isInstanceOf[$tpname[..$tparams]]
+                  obj != null && obj.isInstanceOf[$tpname[..$wildcardedTparams]]
                """,
               q"""
                 override def equals(obj: Any): _root_.scala.Boolean =
                   canEqual(obj) && {
-                    val other = obj.asInstanceOf[$tpname[..$tparams]]
+                    val other = obj.asInstanceOf[$tpname[..$wildcardedTparams]]
                     $fldChecks
                   }
                """
@@ -340,7 +355,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                   s"Found parameter with no default value ${p.name} after @since annotation"
                 )
             }
-            q""" def apply(..$a0): $tpname[..$tparams] = new $tpname[..$tparams](..${a
+            q""" def apply[..$tparams](..$a0): $tpname[..$tparamsRef] = new $tpname[..$tparamsRef](..${a
               .map(p => q"${p.name}") ++ b.map(_.rhs)})"""
           }
 
