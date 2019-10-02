@@ -5,6 +5,18 @@ import utest._
 
 object MoreFieldsTests extends TestSuite {
   val tests = Tests {
+    "tuple" - {
+      @data class Bar(
+          n: Int,
+          s: String,
+          b: Boolean = true,
+          d: Double = 1.0
+      )
+      val foo = Bar(1, "a", false, 1.2)
+      val t = foo.tuple
+      assert(t == (1, "a", false, 1.2))
+    }
+
     "since annotation" - {
       * - {
         illTyped(
@@ -102,6 +114,94 @@ object MoreFieldsTests extends TestSuite {
         assert(false)
       } catch {
         case _: IndexOutOfBoundsException =>
+      }
+    }
+
+    "has toString" - {
+      "def" - {
+        @data class Foo(password: String) {
+          override def toString: String = "Foo(****)"
+        }
+
+        val f = Foo("aa")
+        val str = f.toString
+        val expected = "Foo(****)"
+        assert(str == expected)
+      }
+
+      "val" - {
+        @data class Foo(password: String) {
+          override val toString = "Foo(****)"
+        }
+
+        val f = Foo("aa")
+        val str = f.toString
+        val expected = "Foo(****)"
+        assert(str == expected)
+      }
+
+      "lazy val" - {
+        @data class Foo(password: String) {
+          override lazy val toString = "Foo(****)"
+        }
+
+        val f = Foo("aa")
+        val str = f.toString
+        val expected = "Foo(****)"
+        assert(str == expected)
+      }
+
+      "field" - {
+        @data class Foo(password: String, override val toString: String)
+
+        val f = Foo("aa", "123")
+        val str = f.toString
+        val expected = "123"
+        assert(str == expected)
+      }
+    }
+
+    "has hashCode" - {
+      "def" - {
+        @data class Foo(password: String) {
+          override def hashCode: Int = 34
+        }
+
+        val f = Foo("aa")
+        val code = f.hashCode
+        val expected = 34
+        assert(code == expected)
+      }
+
+      "val" - {
+        @data class Foo(password: String) {
+          override val hashCode = 34
+        }
+
+        val f = Foo("aa")
+        val code = f.hashCode
+        val expected = 34
+        assert(code == expected)
+      }
+
+      "lazy val" - {
+        @data class Foo(password: String) {
+          override lazy val hashCode = 34
+        }
+
+        val f = Foo("aa")
+        val code = f.hashCode
+        val expected = 34
+        assert(code == expected)
+      }
+
+      "hashCode" - {
+        @data class Foo(password: String, override val hashCode: Int)
+
+        val f = Foo("aa", 56)
+        val code = f.hashCode
+        val expected = 56
+        assert(code == expected)
       }
     }
   }
