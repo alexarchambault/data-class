@@ -49,6 +49,25 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             fromFields || fromStats
           }
 
+          val hasHashCode = {
+            def fromStats = stats.exists {
+              case DefDef(_, nme, tparams, vparamss, _, _)
+                  if nme.decodedName.toString == "hashCode" && tparams.isEmpty && vparamss
+                    .forall(_.isEmpty) =>
+                true
+              case t @ ValDef(_, name, _, _)
+                  if name.decodedName.toString == "hashCode" =>
+                true
+              case _ =>
+                false
+            }
+
+            val fromFields =
+              allParams.exists(_.name.decodedName.toString() == "hashCode")
+
+            fromFields || fromStats
+          }
+
           val namedArgs = allParams.map { p =>
             q"${p.name}=this.${p.name}"
           }
@@ -100,18 +119,22 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             )
           }
 
-          val hashCodeMethod = {
-            val fldLines = allParams
-              .map { param =>
-                q"code = 37 * code + this.${param.name}.##"
-              }
-            q"""override def hashCode: _root_.scala.Int = {
-                  var code = 17 + ${tpname.decodedName.toString()}.##
-                  ..$fldLines
-                  37 * code
+          val hashCodeMethod =
+            if (hasHashCode) Nil
+            else {
+              val fldLines = allParams
+                .map { param =>
+                  q"code = 37 * code + this.${param.name}.##"
                 }
-             """
-          }
+              Seq(
+                q"""override def hashCode: _root_.scala.Int = {
+                    var code = 17 + ${tpname.decodedName.toString()}.##
+                    ..$fldLines
+                    37 * code
+                  }
+               """
+              )
+            }
 
           val productMethods = {
             val elemCases = paramss.flatten.zipWithIndex
@@ -260,7 +283,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               ..$privateAccessors
               ..$toStringMethod
               ..$equalMethods
-              $hashCodeMethod
+              ..$hashCodeMethod
               ..$productMethods
           }"""
 

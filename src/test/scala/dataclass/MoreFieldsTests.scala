@@ -148,6 +148,50 @@ object MoreFieldsTests extends TestSuite {
         assert(str == expected)
       }
     }
+
+    "has hashCode" - {
+      "def" - {
+        @data class Foo(password: String) {
+          override def hashCode: Int = 34
+        }
+
+        val f = Foo("aa")
+        val code = f.hashCode
+        val expected = 34
+        assert(code == expected)
+      }
+
+      "val" - {
+        @data class Foo(password: String) {
+          override val hashCode = 34
+        }
+
+        val f = Foo("aa")
+        val code = f.hashCode
+        val expected = 34
+        assert(code == expected)
+      }
+
+      "lazy val" - {
+        @data class Foo(password: String) {
+          override lazy val hashCode = 34
+        }
+
+        val f = Foo("aa")
+        val code = f.hashCode
+        val expected = 34
+        assert(code == expected)
+      }
+
+      "hashCode" - {
+        @data class Foo(password: String, override val hashCode: Int)
+
+        val f = Foo("aa", 56)
+        val code = f.hashCode
+        val expected = 56
+        assert(code == expected)
+      }
+    }
   }
 
 }
