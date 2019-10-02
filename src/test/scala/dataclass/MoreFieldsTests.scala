@@ -104,6 +104,50 @@ object MoreFieldsTests extends TestSuite {
         case _: IndexOutOfBoundsException =>
       }
     }
+
+    "has toString" - {
+      "def" - {
+        @data class Foo(password: String) {
+          override def toString: String = "Foo(****)"
+        }
+
+        val f = Foo("aa")
+        val str = f.toString
+        val expected = "Foo(****)"
+        assert(str == expected)
+      }
+
+      "val" - {
+        @data class Foo(password: String) {
+          override val toString = "Foo(****)"
+        }
+
+        val f = Foo("aa")
+        val str = f.toString
+        val expected = "Foo(****)"
+        assert(str == expected)
+      }
+
+      "lazy val" - {
+        @data class Foo(password: String) {
+          override lazy val toString = "Foo(****)"
+        }
+
+        val f = Foo("aa")
+        val str = f.toString
+        val expected = "Foo(****)"
+        assert(str == expected)
+      }
+
+      "field" - {
+        @data class Foo(password: String, override val toString: String)
+
+        val f = Foo("aa", "123")
+        val str = f.toString
+        val expected = "123"
+        assert(str == expected)
+      }
+    }
   }
 
 }

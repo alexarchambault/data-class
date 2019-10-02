@@ -30,6 +30,25 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
 
           val allParams = paramss.flatten
 
+          val hasToString = {
+            def fromStats = stats.exists {
+              case DefDef(_, nme, tparams, vparamss, _, _)
+                  if nme.decodedName.toString == "toString" && tparams.isEmpty && vparamss
+                    .forall(_.isEmpty) =>
+                true
+              case t @ ValDef(_, name, _, _)
+                  if name.decodedName.toString == "toString" =>
+                true
+              case _ =>
+                false
+            }
+
+            val fromFields =
+              allParams.exists(_.name.decodedName.toString() == "toString")
+
+            fromFields || fromStats
+          }
+
           val namedArgs = allParams.map { p =>
             q"${p.name}=this.${p.name}"
           }
@@ -114,24 +133,28 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             )
           }
 
-          val toStringMethod = {
-            val fldLines = allParams.zipWithIndex
-              .flatMap {
-                case (param, idx) =>
-                  val before =
-                    if (idx == 0) Nil
-                    else Seq(q"""b.append(", ")""")
-                  before :+ q"""b.append(_root_.java.lang.String.valueOf(this.${param.name}))"""
-              }
-            q"""override def toString: _root_.java.lang.String = {
-                  val b = new _root_.java.lang.StringBuilder(${tpname.decodedName
-              .toString() + "("})
-                  ..$fldLines
-                  b.append(")")
-                  b.toString()
+          val toStringMethod =
+            if (hasToString) Nil
+            else {
+              val fldLines = allParams.zipWithIndex
+                .flatMap {
+                  case (param, idx) =>
+                    val before =
+                      if (idx == 0) Nil
+                      else Seq(q"""b.append(", ")""")
+                    before :+ q"""b.append(_root_.java.lang.String.valueOf(this.${param.name}))"""
                 }
-             """
-          }
+              Seq(
+                q"""override def toString: _root_.java.lang.String = {
+                    val b = new _root_.java.lang.StringBuilder(${tpname.decodedName
+                  .toString() + "("})
+                    ..$fldLines
+                    b.append(")")
+                    b.toString()
+                  }
+               """
+              )
+            }
 
           val splits = {
 
@@ -235,7 +258,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               ..$stats
               ..$setters
               ..$privateAccessors
-              $toStringMethod
+              ..$toStringMethod
               ..$equalMethods
               $hashCodeMethod
               ..$productMethods
