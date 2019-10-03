@@ -4,7 +4,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault/data-class_2.13.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault/data-class_2.13)
 
 *data-class* allows to create case-classes with no `unapply` or `copy` methods,
-making it easier to evolve them while maintaining binary compatiblity.
+making it easier to add fields to them while maintaining binary compatiblity.
 
 ## Usage
 
@@ -12,7 +12,7 @@ making it easier to evolve them while maintaining binary compatiblity.
 
 Add to your `build.sbt`,
 ```scala
-libraryDependencies += "io.github.alexarchambault" %% "data-class" % "0.1.0"
+libraryDependencies += "io.github.alexarchambault" %% "data-class" % "0.1.2"
 ```
 
 The latest version is [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault/data-class_2.13.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault/data-class_2.13).
@@ -61,6 +61,50 @@ class with `count` updated).
 Most notably, it does _not_ generate `copy` or `unapply` methods, making
 binary compatibility much more tractable upon adding new fields (see below).
 
+In the example above, the `@data` macro generates code like the following (modulo macro hygiene):
+```scala
+final class Foo private (val n: Int, val s: String) extends Product with Serializable {
+
+  def withN(n: Int) = new Foo(n = n, s = s)
+  def withS(s: String) = new Foo(n = n, s = s)
+
+  override def toString: String = {
+    val b = new StringBuilder("Foo(")
+    b.append(String.valueOf(n))
+    b.append(", ")
+    b.append(String.valueOf(s))
+    b.append(")")
+    b.toString
+  }
+
+  override def canEqual(obj: Any): Boolean = obj != null && obj.isInstanceOf[Foo]
+  override def equals(obj: Any): Boolean = canEqual(obj) && {
+    val other = obj.asInstanceOf[Foo]
+    n == other.n && s == other.s
+  })
+
+  override def hashCode: Int = {
+    var code = 17 + "Foo".##
+    code = 37 * code + n.##
+    code = 37 * code + s.##
+    37 * code
+  }
+
+  def tuple = (this.n, this.s)
+
+  override def productArity: Int = 2
+  override def productElement(n: Int): Any = n match {
+    case 0 => this.n
+    case 1 => this.s
+    case n => throw new IndexOutOfBoundsException(n.toString)
+  }
+}
+
+object Foo {
+  def apply(n: Int, s: String): Foo = new Foo(n, s)
+}
+```
+
 ### shapeless
 
 By default, the classes annotated with `@data` do not have a shape that
@@ -90,6 +134,14 @@ The `@since` annotation makes the `@data` macro generate `apply` methods
 compatible with those without the new fields. If the constructors
 are public, back-compatible constructors are generated too.
 
+The example above generates the following `apply` methods in the companion object of `Foo`:
+```scala
+object Foo {
+  def apply(n: Int, d: Double): Foo = new Foo(n, d, "", false)
+  def apply(n: Int, d: Double, s: String, b: Boolean) = new Foo(n, d, s, b)
+}
+```
+
 The `@since` annotation accepts an optional string argument - a version
 can be passed for example - and it can be used multiple times, like
 ```scala
@@ -105,6 +157,15 @@ import dataclass._
   count: Option[Int] = None,
   info: Option[String] = None
 )
+```
+
+This generates the following `apply` methods in the companion object of `Foo`:
+```scala
+object Foo {
+  def apply(n: Int, d: Double): Foo = new Foo(n, d, "", false, None, None)
+  def apply(n: Int, d: Double, s: String, b: Boolean) = new Foo(n, d, s, b, None, None)
+  def apply(n: Int, d: Double, s: String, b: Boolean, count: Option[Int], info: Option[String]) = new Foo(n, d, s, b, count, info)
+}
 ```
 
 ## Related work
