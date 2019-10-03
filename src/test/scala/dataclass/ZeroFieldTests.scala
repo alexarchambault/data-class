@@ -20,9 +20,22 @@ object ZeroFieldTests extends TestSuite {
       assert(str == expected)
     }
     "tuple" - {
-      val foo = Foo()
-      val t = foo.tuple
-      assert(t == ())
+      @data class Foo0() {
+        def tuple0 = tuple
+      }
+
+      * - {
+        val foo = Foo0()
+        val t = foo.tuple0
+        assert(t == ())
+      }
+
+      "actually private" - {
+        val foo = Foo0()
+        illTyped("""
+          foo.tuple
+        """, "method tuple in class Foo0 cannot be accessed in Foo0")
+      }
     }
 
     "type params" - {

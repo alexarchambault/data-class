@@ -43,8 +43,11 @@ object OneFieldTests extends TestSuite {
     }
 
     "tuple" - {
-      val foo = Foo(1)
-      val t = foo.tuple
+      @data class Foo0(a: Int) {
+        def tuple0 = tuple
+      }
+      val foo = Foo0(1)
+      val t = foo.tuple0
       assert(t == Tuple1(1))
     }
 
