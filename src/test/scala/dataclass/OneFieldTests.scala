@@ -7,7 +7,7 @@ import scala.concurrent.Future
 
 object OneFieldTests extends TestSuite {
   val tests = Tests {
-    @data class Foo(a: Int)
+    @data class Foo(count: Int)
     "equals" - {
       * - {
         val foo = Foo(1)
@@ -33,13 +33,13 @@ object OneFieldTests extends TestSuite {
     }
     "accessor" - {
       val foo = Foo(2)
-      assert(foo.a == 2)
+      assert(foo.count == 2)
     }
     "setter" - {
       val foo = Foo(1)
-      val foo2 = foo.withA(2)
-      assert(foo.a == 1)
-      assert(foo2.a == 2)
+      val foo2 = foo.withCount(2)
+      assert(foo.count == 1)
+      assert(foo2.count == 2)
     }
 
     "tuple" - {

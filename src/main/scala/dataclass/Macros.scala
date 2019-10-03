@@ -96,18 +96,9 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               val namedArgs0 =
                 namedArgs.updated(idx, q"${p.name}=${p.name}")
               val fn = p.name.decodedName.toString.capitalize
-              val withDefIdent = TermName("with" + fn(0).toUpper + fn.tail)
+              val withDefIdent = TermName(s"with$fn")
               q"def $withDefIdent(${p.name}: ${p.tpt}) = new $tpname(..$namedArgs0)"
           }
-
-          val privateAccessors = allParams
-            .filter(_.mods.hasFlag(Flag.PRIVATE))
-            .filter(_.mods.hasFlag(Flag.LOCAL))
-            .map { p =>
-              q"private def ${TermName(
-                p.name.decodedName.toString() + "$accessor"
-              )}: ${p.tpe} = this.${p.name}"
-            }
 
           val wildcardedTparams = tparams.map {
             case TypeDef(mods, name, tparams, rhs) if tparams.isEmpty =>
@@ -127,15 +118,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
           val equalMethods = {
             val fldChecks = paramss.flatten
               .map { param =>
-                val name =
-                  if (param.mods.hasFlag(Flag.PRIVATE) && param.mods
-                        .hasFlag(Flag.LOCAL))
-                    TermName(
-                      param.name.decodedName.toString() + "$accessor"
-                    )
-                  else
-                    param.name
-                q"this.${param.name} == other.$name"
+                q"this.${param.name} == other.${param.name}"
               }
               .foldLeft[Tree](q"true")((a, b) => q"$a && $b")
             Seq(
@@ -175,7 +158,6 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             else if (allParams.isEmpty)
               Seq(q"private def tuple = ()")
             else {
-              definitions.TupleClass.seq
               val fields = allParams.map(p => q"this.${p.name}")
               val tupleName = TermName(s"Tuple${allParams.length}")
               Seq(
@@ -327,7 +309,6 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               ..$extraConstructors
               ..$stats
               ..$setters
-              ..$privateAccessors
               ..$toStringMethod
               ..$equalMethods
               ..$hashCodeMethod
