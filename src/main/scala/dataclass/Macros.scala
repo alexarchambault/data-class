@@ -96,7 +96,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               val namedArgs0 =
                 namedArgs.updated(idx, q"${p.name}=${p.name}")
               val fn = p.name.decodedName.toString.capitalize
-              val withDefIdent = TermName("with" + fn(0).toUpper + fn.tail)
+              val withDefIdent = TermName(s"with$fn")
               q"def $withDefIdent(${p.name}: ${p.tpt}) = new $tpname(..$namedArgs0)"
           }
 
@@ -175,7 +175,6 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             else if (allParams.isEmpty)
               Seq(q"private def tuple = ()")
             else {
-              definitions.TupleClass.seq
               val fields = allParams.map(p => q"this.${p.name}")
               val tupleName = TermName(s"Tuple${allParams.length}")
               Seq(
