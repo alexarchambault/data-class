@@ -11,9 +11,11 @@ object MoreFieldsTests extends TestSuite {
           s: String,
           b: Boolean = true,
           d: Double = 1.0
-      )
+      ) {
+        def tuple0 = tuple
+      }
       val foo = Bar(1, "a", false, 1.2)
-      val t = foo.tuple
+      val t = foo.tuple0
       assert(t == (1, "a", false, 1.2))
     }
 

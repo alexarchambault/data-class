@@ -173,13 +173,13 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
           val tupleMethod =
             if (hasTuple || allParams.lengthCompare(22) > 0) Nil
             else if (allParams.isEmpty)
-              Seq(q"def tuple = ()")
+              Seq(q"private def tuple = ()")
             else {
               definitions.TupleClass.seq
               val fields = allParams.map(p => q"this.${p.name}")
               val tupleName = TermName(s"Tuple${allParams.length}")
               Seq(
-                q"def tuple = _root_.scala.$tupleName(..$fields)"
+                q"private def tuple = _root_.scala.$tupleName(..$fields)"
               )
             }
 
