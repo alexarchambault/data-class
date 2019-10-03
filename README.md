@@ -47,9 +47,9 @@ This annotation adds a number of features, that can also be found in
 case classes:
 - sensible `equals` / `hashCode` / `toString` implementations,
 - `apply` methods in the companion object for easier creation,
-- add `scala.Product` (itself extending `scala.Equal`) as parent class, and
+- extend the `scala.Product` trait (itself extending `scala.Equal`), and
 implement its methods,
-- add `scala.Serializable` as parent class.
+- extend the `scala.Serializable` trait.
 
 It also adds things that differ from case classes:
 - add `final` modifier to the class,
@@ -90,7 +90,7 @@ final class Foo private (val n: Int, val s: String) extends Product with Seriali
     37 * code
   }
 
-  def tuple = (this.n, this.s)
+  private def tuple = (this.n, this.s)
 
   override def productArity: Int = 2
   override def productElement(n: Int): Any = n match {
