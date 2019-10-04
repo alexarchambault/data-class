@@ -23,7 +23,7 @@ compiler option needs to be used from 2.13:
 lazy val isScala213 = Def.setting(scalaVersion.value.startsWith("2.13."))
 libraryDependencies ++= {
   if (isScala213.value) Nil
-  else Seq(compilerPlugin("org.scalamacros" % s"paradise" % "2.1.1" cross CrossVersion.full))
+  else Seq(compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full))
 }
 scalacOptions ++= {
   if (isScala213.value) Seq("-Ymacro-annotations")
