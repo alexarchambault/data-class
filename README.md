@@ -3,8 +3,9 @@
 [![Build Status](https://travis-ci.org/alexarchambault/data-class.svg?branch=master)](https://travis-ci.org/alexarchambault/data-class)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault/data-class_2.13.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault/data-class_2.13)
 
-*data-class* allows to create case-classes with no `unapply` or `copy` methods,
-making it easier to add fields to them while maintaining binary compatiblity.
+*data-class* allows to create classes almost like case-classes, but with no
+public `unapply` or `copy` methods, making it easier to add fields to them while
+maintaining binary compatiblity.
 
 ## Usage
 
@@ -12,7 +13,7 @@ making it easier to add fields to them while maintaining binary compatiblity.
 
 Add to your `build.sbt`,
 ```scala
-libraryDependencies += "io.github.alexarchambault" %% "data-class" % "0.1.2"
+libraryDependencies += "io.github.alexarchambault" %% "data-class" % "0.1.3"
 ```
 
 The latest version is [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault/data-class_2.13.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault/data-class_2.13).
