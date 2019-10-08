@@ -22,9 +22,8 @@ The macro paradise plugin is needed up to scala 2.12, and the right
 compiler option needs to be used from 2.13 onwards:
 ```scala
 lazy val isAtLeastScala213 = Def.setting {
-  CrossVersion.partialVersion(scalaVersion.value).exists {
-    case (maj, min) => maj == 2 && min >= 13
-  }
+  import Ordering.Implicits._
+  CrossVersion.partialVersion(scalaVersion.value).exists(_ >= (2, 13))
 }
 libraryDependencies ++= {
   if (isAtLeastScala213.value) Nil
