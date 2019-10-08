@@ -27,7 +27,7 @@ object ZeroFieldTests extends TestSuite {
       * - {
         val foo = Foo0()
         val t = foo.tuple0
-        assert(t == ())
+        assert(t.getClass == classOf[Unit])
       }
 
       "actually private" - {

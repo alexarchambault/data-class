@@ -28,7 +28,8 @@ object Settings {
     scalacOptions ++= {
       if (isScala211Or212.value) Nil
       else List("-Ymacro-annotations")
-    }
+    },
+    scalacOptions += "-deprecation"
   )
 
 }

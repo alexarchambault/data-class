@@ -255,8 +255,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             lazy val newCtorPos = {
               val defaultCtorPos = c.enclosingPosition
               defaultCtorPos
-                .withEnd(defaultCtorPos.endOrPoint + 1)
-                .withStart(defaultCtorPos.startOrPoint + 1)
+                .withEnd(defaultCtorPos.end + 1)
+                .withStart(defaultCtorPos.start + 1)
                 .withPoint(defaultCtorPos.point + 1)
             }
 
