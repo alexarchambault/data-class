@@ -168,5 +168,28 @@ object TwoFieldsTests extends TestSuite {
         }
       }
     }
+
+    "multiple parameter groups" - {
+      * - {
+        @data class Bar(n: Int)(implicit s: String)
+        val bar = Bar(2)("a")
+        val bar0 = Bar(1)("a")
+        assert(bar != bar0)
+      }
+
+      * - {
+        class TC[T]
+        object TC {
+          implicit val int = new TC[Int]
+          implicit val string = new TC[String]
+        }
+        @data class Bar[T](t: T)(implicit f: TC[T])
+        val bar = Bar(2)
+        val bar0 = Bar("a")
+        assert(bar != bar0)
+        assert(bar.f == TC.int)
+        assert(bar0.f == TC.string)
+      }
+    }
   }
 }

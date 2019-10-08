@@ -22,12 +22,6 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                         extends { ..$earlydefns } with ..$parents { $self =>
                 ..$stats
               }""" =>
-          if (paramss.lengthCompare(1) > 0)
-            c.abort(
-              c.enclosingPosition,
-              "Multiple param groups not supported yet"
-            )
-
           val allParams = paramss.flatten
 
           val hasToString = {
@@ -87,17 +81,23 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             fromFields || fromStats
           }
 
-          val namedArgs = allParams.map { p =>
+          val namedArgs = paramss.map(_.map { p =>
             q"${p.name}=this.${p.name}"
-          }
+          })
 
-          val setters = allParams.zipWithIndex.map {
-            case (p, idx) =>
-              val namedArgs0 =
-                namedArgs.updated(idx, q"${p.name}=${p.name}")
-              val fn = p.name.decodedName.toString.capitalize
-              val withDefIdent = TermName(s"with$fn")
-              q"def $withDefIdent(${p.name}: ${p.tpt}) = new $tpname(..$namedArgs0)"
+          val setters = paramss.zipWithIndex.flatMap {
+            case (l, groupIdx) =>
+              l.zipWithIndex.map {
+                case (p, idx) =>
+                  val namedArgs0 =
+                    namedArgs.updated(
+                      groupIdx,
+                      namedArgs(groupIdx).updated(idx, q"${p.name}=${p.name}")
+                    )
+                  val fn = p.name.decodedName.toString.capitalize
+                  val withDefIdent = TermName(s"with$fn")
+                  q"def $withDefIdent(${p.name}: ${p.tpt}) = new $tpname(...$namedArgs0)"
+              }
           }
 
           val wildcardedTparams = tparams.map {
@@ -224,12 +224,12 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                 case Nil => acc
               }
 
-            val splits0 = Seq(allParams.length) ++ indexWithAllDefaults(
-              allParams,
+            val splits0 = Seq(paramss.head.length) ++ indexWithAllDefaults(
+              paramss.head,
               0,
               None
             ).toSeq ++
-              allParams.zipWithIndex
+              paramss.head.zipWithIndex
                 .filter(
                   _._1.mods.annotations
                     .exists(_.toString().startsWith("new since("))
@@ -259,9 +259,9 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                 .withPoint(defaultCtorPos.point + 1)
             }
 
-            val len = allParams.length
+            val len = paramss.head.length
             splits.reverse.filter(_ != len).map { idx =>
-              val (a, b) = allParams.splitAt(idx)
+              val (a, b) = paramss.head.splitAt(idx)
               val a0 = a.map {
                 case ValDef(mods, name, tpt, _) =>
                   q"$name: $tpt"
@@ -274,8 +274,9 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                     s"Found parameter with no default value ${p.name} after @since annotation"
                   )
               }
+              val a1 = a0 :: paramss.tail
               atPos(newCtorPos)(q"""
-                $ctorMods0 def this(..$a0) = this(..${a
+                $ctorMods0 def this(...$a1) = this(..${a
                 .map(p => q"${p.name}") ++ b
                 .map(_.rhs)})
               """)
@@ -287,23 +288,26 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             mods.privateWithin,
             mods.annotations
           )
-          val allParams0 = allParams.map { p =>
+          val allParams0 = paramss.map(_.map { p =>
             if (p.mods.hasFlag(Flag.PRIVATE) && p.mods.hasFlag(Flag.LOCAL)) {
+              var flags0 = Flag.PARAMACCESSOR
+              if (p.mods.hasFlag(Flag.IMPLICIT))
+                flags0 = flags0 | Flag.IMPLICIT
               val mods0 = Modifiers(
-                Flag.PARAMACCESSOR,
+                flags0,
                 p.mods.privateWithin,
                 p.mods.annotations
               )
               q"$mods0 val ${p.name}: ${p.tpt}"
             } else
               p
-          }
+          })
           val parents0 = parents ::: List(
             tq"_root_.scala.Product",
             tq"_root_.scala.Serializable"
           )
           val res =
-            q"""$mods0 class $tpname[..$tparams] $ctorMods0(..$allParams0)
+            q"""$mods0 class $tpname[..$tparams] $ctorMods0(...$allParams0)
                     extends { ..$earlydefns } with ..$parents0 { $self =>
               ..$extraConstructors
               ..$stats
@@ -322,7 +326,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             mdef
 
           val applyMethods = splits.map { idx =>
-            val (a, b) = allParams.splitAt(idx)
+            val (a, b) = paramss.head.splitAt(idx)
             val a0 = a.map {
               case ValDef(mods, name, tpt, _) =>
                 q"$name: $tpt"
@@ -335,8 +339,11 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                   s"Found parameter with no default value ${p.name} after @since annotation"
                 )
             }
-            q""" def apply[..$tparams](..$a0): $tpname[..$tparamsRef] = new $tpname[..$tparamsRef](..${a
-              .map(p => q"${p.name}") ++ b.map(_.rhs)})"""
+            val a1 = a0 :: paramss.tail
+            q""" def apply[..$tparams](...$a1): $tpname[..$tparamsRef] = new $tpname[..$tparamsRef](...${(a
+              .map(p => q"${p.name}") ++ b.map(_.rhs)) :: paramss.tail.map(
+              _.map(p => q"${p.name}")
+            )})"""
           }
 
           val mdef0 =
