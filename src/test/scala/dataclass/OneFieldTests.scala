@@ -154,10 +154,35 @@ object OneFieldTests extends TestSuite {
       }
 
       "higher kind" - {
-        @data class Bar[F[_]](f: F[Int])
-        val barF = Bar[Future](Future.successful(2))
-        val barL = Bar[List](List(3))
-        assert(barF != barL)
+        * - {
+          @data class Bar[F[_]](f: F[Int])
+          val barF = Bar[Future](Future.successful(2))
+          val barL = Bar[List](List(3))
+          assert(barF != barL)
+        }
+
+        * - {
+          @data class Bar[F[_, _]](f: F[String, Int])
+          val bar = Bar[Map](Map("a" -> 1))
+          val bar0 = Bar[Map](Map("b" -> 2))
+          assert(bar != bar0)
+        }
+
+        * - {
+          @data class Bar[F[_[_]]](f: F[List])
+          class Monad[F[_]]
+          val bar = Bar[Monad](new Monad[List])
+          val bar0 = Bar[Monad](new Monad[List])
+          assert(bar != bar0)
+        }
+
+        * - {
+          @data class Bar[F[_[_, _]]](f: F[Map])
+          class TC[F[_, _]]
+          val bar = Bar[TC](new TC[Map])
+          val bar0 = Bar[TC](new TC[Map])
+          assert(bar != bar0)
+        }
       }
     }
   }

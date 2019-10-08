@@ -104,12 +104,11 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             case TypeDef(mods, name, tparams, rhs) if tparams.isEmpty =>
               tq"$WildcardType"
             case TypeDef(mods, name, tparams, rhs) =>
-              val params = tparams.indices.map(n => s"X$n").map { name =>
-                val n = TypeName(name)
-                val s = tq"$n".symbol
-                internal.typeDef(s)
+              val tparams0 = tparams.zipWithIndex.map {
+                case (p, n) =>
+                  TypeDef(p.mods, TypeName(s"X$n"), p.tparams, p.rhs)
               }
-              tq"({type L[..$params]=$WildcardType})#L"
+              tq"({type L[..$tparams0]=$WildcardType})#L"
           }
           val tparamsRef = tparams.map { t =>
             tq"${t.name}"
