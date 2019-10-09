@@ -184,6 +184,18 @@ object OneFieldTests extends TestSuite {
           assert(bar != bar0)
         }
       }
+
+      "no apply if explicitly private constructor" - {
+        @data class Bar private (path: String)
+        object Bar {
+          def apply(path: String): Bar =
+            new Bar(path.stripSuffix("/"))
+        }
+
+        val bar = Bar("foo/1")
+        val bar0 = Bar("foo/1/")
+        assert(bar == bar0)
+      }
     }
   }
 }

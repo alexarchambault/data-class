@@ -325,26 +325,29 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
           val q"$mmods object $mname extends { ..$mearlydefns } with ..$mparents { $mself => ..$mstats }" =
             mdef
 
-          val applyMethods = splits.map { idx =>
-            val (a, b) = paramss.head.splitAt(idx)
-            val a0 = a.map {
-              case ValDef(mods, name, tpt, _) =>
-                q"$name: $tpt"
-            }
-            // Weirdly enough, things compile fine without this check (resulting in empty trees hanging around)
-            b.foreach { p =>
-              if (p.rhs.isEmpty)
-                c.abort(
-                  p.pos,
-                  s"Found parameter with no default value ${p.name} after @since annotation"
-                )
-            }
-            val a1 = a0 :: paramss.tail
-            q""" def apply[..$tparams](...$a1): $tpname[..$tparamsRef] = new $tpname[..$tparamsRef](...${(a
-              .map(p => q"${p.name}") ++ b.map(_.rhs)) :: paramss.tail.map(
-              _.map(p => q"${p.name}")
-            )})"""
-          }
+          val applyMethods =
+            if (ctorMods.hasFlag(Flag.PRIVATE)) Nil
+            else
+              splits.map { idx =>
+                val (a, b) = paramss.head.splitAt(idx)
+                val a0 = a.map {
+                  case ValDef(mods, name, tpt, _) =>
+                    q"$name: $tpt"
+                }
+                // Weirdly enough, things compile fine without this check (resulting in empty trees hanging around)
+                b.foreach { p =>
+                  if (p.rhs.isEmpty)
+                    c.abort(
+                      p.pos,
+                      s"Found parameter with no default value ${p.name} after @since annotation"
+                    )
+                }
+                val a1 = a0 :: paramss.tail
+                q""" def apply[..$tparams](...$a1): $tpname[..$tparamsRef] = new $tpname[..$tparamsRef](...${(a
+                  .map(p => q"${p.name}") ++ b.map(_.rhs)) :: paramss.tail.map(
+                  _.map(p => q"${p.name}")
+                )})"""
+              }
 
           val mdef0 =
             q"$mmods object $mname extends { ..$mearlydefns } with ..$mparents { $mself => ..$mstats; ..$applyMethods }"
