@@ -206,6 +206,16 @@ object MoreFieldsTests extends TestSuite {
         assert(code == expected)
       }
     }
+
+    "override val with default" - {
+      class Repository {
+        def versionsCheckHasModule: Boolean = false
+      }
+      @data class IvyRepository(
+          override val
+          versionsCheckHasModule: Boolean = true
+      ) extends Repository
+    }
   }
 
 }

@@ -248,24 +248,30 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                 ctorMods.annotations
               )
 
+          val allParams0 = paramss.map(_.map { p =>
+            var flags0 = Flag.PARAMACCESSOR
+            if (p.mods.hasFlag(Flag.IMPLICIT))
+              flags0 = flags0 | Flag.IMPLICIT
+            if (p.mods.hasFlag(Flag.OVERRIDE))
+              flags0 = flags0 | Flag.OVERRIDE
+            if (p.mods.hasFlag(Flag.PRIVATE) && !p.mods.hasFlag(Flag.LOCAL))
+              flags0 = flags0 | Flag.PRIVATE
+
+            // TODO Keep PRIVATE / PROTECTED flags? Warn about them?
+
+            val mods0 = Modifiers(
+              flags0,
+              p.mods.privateWithin,
+              p.mods.annotations
+            )
+            q"$mods0 val ${p.name}: ${p.tpt}"
+          })
+
           val extraConstructors = {
 
             // https://stackoverflow.com/questions/22756542/how-do-i-add-a-no-arg-constructor-to-a-scala-case-class-with-a-macro-annotation/22757936#22757936
-            lazy val newCtorPos = {
-              val defaultCtorPos = c.enclosingPosition
-              defaultCtorPos
-                .withEnd(defaultCtorPos.end + 1)
-                .withStart(defaultCtorPos.start + 1)
-                .withPoint(defaultCtorPos.point + 1)
-            }
-
-            val len = paramss.head.length
-            splits.reverse.filter(_ != len).map { idx =>
-              val (a, b) = paramss.head.splitAt(idx)
-              val a0 = a.map {
-                case ValDef(mods, name, tpt, _) =>
-                  q"$name: $tpt"
-              }
+            splits.filter(_ != paramss.head.length).foreach { idx =>
+              val b = paramss.head.drop(idx)
               // Weirdly enough, things compile fine without this check (resulting in empty trees hanging around)
               b.foreach { p =>
                 if (p.rhs.isEmpty)
@@ -274,7 +280,25 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                     s"Found parameter with no default value ${p.name} after @since annotation"
                   )
               }
-              val a1 = a0 :: paramss.tail
+            }
+
+            lazy val newCtorPos = {
+              val defaultCtorPos = c.enclosingPosition
+              defaultCtorPos
+                .withEnd(defaultCtorPos.end + 1)
+                .withStart(defaultCtorPos.start + 1)
+                .withPoint(defaultCtorPos.point + 1)
+            }
+
+            val len = allParams0.head.length
+            splits.reverse.filter(_ != len).map { idx =>
+              val a = allParams0.head.take(idx)
+              val b = paramss.head.drop(idx)
+              val a0 = a.map {
+                case ValDef(mods, name, tpt, _) =>
+                  q"$name: $tpt"
+              }
+              val a1 = a0 :: allParams0.tail
               atPos(newCtorPos)(q"""
                 $ctorMods0 def this(...$a1) = this(..${a
                 .map(p => q"${p.name}") ++ b
@@ -288,20 +312,6 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             mods.privateWithin,
             mods.annotations
           )
-          val allParams0 = paramss.map(_.map { p =>
-            if (p.mods.hasFlag(Flag.PRIVATE) && p.mods.hasFlag(Flag.LOCAL)) {
-              var flags0 = Flag.PARAMACCESSOR
-              if (p.mods.hasFlag(Flag.IMPLICIT))
-                flags0 = flags0 | Flag.IMPLICIT
-              val mods0 = Modifiers(
-                flags0,
-                p.mods.privateWithin,
-                p.mods.annotations
-              )
-              q"$mods0 val ${p.name}: ${p.tpt}"
-            } else
-              p
-          })
           val parents0 = parents ::: List(
             tq"_root_.scala.Product",
             tq"_root_.scala.Serializable"
@@ -329,18 +339,11 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             if (ctorMods.hasFlag(Flag.PRIVATE)) Nil
             else
               splits.map { idx =>
-                val (a, b) = paramss.head.splitAt(idx)
+                val a = allParams0.head.take(idx)
+                val b = paramss.head.drop(idx)
                 val a0 = a.map {
                   case ValDef(mods, name, tpt, _) =>
                     q"$name: $tpt"
-                }
-                // Weirdly enough, things compile fine without this check (resulting in empty trees hanging around)
-                b.foreach { p =>
-                  if (p.rhs.isEmpty)
-                    c.abort(
-                      p.pos,
-                      s"Found parameter with no default value ${p.name} after @since annotation"
-                    )
                 }
                 val a1 = a0 :: paramss.tail
                 q""" def apply[..$tparams](...$a1): $tpname[..$tparamsRef] = new $tpname[..$tparamsRef](...${(a
