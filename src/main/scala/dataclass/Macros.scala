@@ -259,12 +259,26 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
 
             // TODO Keep PRIVATE / PROTECTED flags? Warn about them?
 
-            val mods0 = Modifiers(
-              flags0,
-              p.mods.privateWithin,
-              p.mods.annotations
-            )
-            q"$mods0 val ${p.name}: ${p.tpt}"
+            val p0 = {
+              val mods0 = Modifiers(
+                flags0,
+                p.mods.privateWithin,
+                p.mods.annotations
+              )
+              q"$mods0 val ${p.name}: ${p.tpt}"
+            }
+            val hasSince =
+              p0.mods.annotations.exists(_.toString().startsWith("new since("))
+            if (hasSince) {
+              val mods0 = Modifiers(
+                p0.mods.flags,
+                p0.mods.privateWithin,
+                p0.mods.annotations
+                  .filter(!_.toString().startsWith("new since("))
+              )
+              q"$mods0 val ${p0.name}: ${p0.tpt}"
+            } else
+              p0
           })
 
           val extraConstructors = {
