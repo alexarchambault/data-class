@@ -111,13 +111,12 @@ object Foo {
 
 ### shapeless
 
-By default, the classes annotated with `@data` do not have a shape that
-`shapeless.Generic` handles. This can be fixed by making the constructors
-of the generated classes public, like
+By default, the classes annotated with `@data` now have a shape that
+`shapeless.Generic` handles:
 ```scala
 import dataclass.data
 
-@data(publicConstructors=true) class Foo(n: Int, d: Double)
+@data class Foo(n: Int, d: Double)
 
 import shapeless._
 Generic[Foo] // works

@@ -27,3 +27,33 @@ lazy val `data-class` = project
     ),
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
+
+lazy val `test-proj-v1` = project
+  .in(file("test/proj-v1"))
+  .dependsOn(`data-class` % Provided)
+  .settings(
+    Settings.shared,
+    organization := "dataclass.test",
+    moduleName := "proj",
+    version := "1.0"
+  )
+
+lazy val `test-proj-v2` = project
+  .in(file("test/proj-v2"))
+  .dependsOn(`data-class` % Provided)
+  .settings(
+    Settings.shared,
+    organization := "dataclass.test",
+    moduleName := "proj",
+    version := "2.0",
+    mimaPreviousArtifacts := Set(
+      organization.value %% moduleName.value % version.in(`test-proj-v1`).value
+    )
+  )
+
+lazy val `proj-v1-user` = project
+  .in(file("test/user-proj-v1"))
+  .dependsOn(`test-proj-v1`)
+  .settings(
+    Settings.shared
+  )

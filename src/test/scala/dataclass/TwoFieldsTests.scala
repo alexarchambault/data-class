@@ -29,10 +29,18 @@ object TwoFieldsTests extends TestSuite {
       val expected = "Foo(1, o)"
       assert(str == expected)
     }
-    "class constructor is private" - {
-      illTyped("""
+    "class constructor" - {
+      "public" - {
+        // Would have preferred it to be public by default
         val foo = new Foo(3, "a")
-      """, "constructor Foo in class Foo cannot be accessed .*")
+      }
+      "private" - {
+        @data class Bar private (n: Int, s: String)
+        val bar = Bar(4, "b")
+        illTyped("""
+          val bar0 = new Bar(5, "c")
+        """, "constructor Bar in class Bar cannot be accessed.*")
+      }
     }
     "accessors" - {
       val foo = Foo(2, "c")
@@ -73,7 +81,7 @@ object TwoFieldsTests extends TestSuite {
     }
 
     "shapeless" - {
-      @data(publicConstructor = true) class Bar(n: Int, s: String)
+      @data class Bar(n: Int, s: String)
       import shapeless._
       * - {
         val gen = Generic[Bar]

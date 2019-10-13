@@ -26,10 +26,17 @@ object OneFieldTests extends TestSuite {
       val expected = "Foo(1)"
       assert(str == expected)
     }
-    "class constructor is private" - {
-      illTyped("""
+    "class constructor" - {
+      "public" - {
         val foo = new Foo(3)
-      """, "constructor Foo in class Foo cannot be accessed .*")
+      }
+      "private" - {
+        @data class Bar private (n: Int)
+        val bar = Bar(2)
+        illTyped("""
+          val bar0 = new Bar(3)
+        """, "constructor Bar in class Bar cannot be accessed.*")
+      }
     }
     "accessor" - {
       val foo = Foo(2)
@@ -78,7 +85,7 @@ object OneFieldTests extends TestSuite {
     }
 
     "shapeless" - {
-      @data(publicConstructor = true) class Bar(n: Int)
+      @data class Bar(n: Int)
       import shapeless._
       * - {
         val gen = Generic[Bar]
@@ -185,12 +192,16 @@ object OneFieldTests extends TestSuite {
         }
       }
 
-      "no apply if explicitly private constructor" - {
-        @data class Bar private (path: String)
+      "no apply methods and private constructor" - {
+        @data(apply = false) class Bar private (path: String)
         object Bar {
           def apply(path: String): Bar =
             new Bar(path.stripSuffix("/"))
         }
+
+        illTyped("""
+          val bar1 = new Bar("a")
+        """, "constructor Bar in class Bar cannot be accessed.*")
 
         val bar = Bar("foo/1")
         val bar0 = Bar("foo/1/")
