@@ -22,7 +22,7 @@ stages:
   - name: release
     if: (branch = master AND type = push) OR (tag IS present)
 
-script: sbt ++$SCALA_VERSION test test-proj-v1/publishLocal test-proj-v2/mimaReportBinaryIssues
+script: sbt ++$SCALA_VERSION test test-proj-v1/publishLocal test-proj-v2/mimaReportBinaryIssues proj-v1-user/compile
 jobs:
   include:
   - env: SCALA_VERSION=2.13.1
