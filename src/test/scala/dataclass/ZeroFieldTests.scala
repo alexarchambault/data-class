@@ -68,14 +68,21 @@ object ZeroFieldTests extends TestSuite {
       }
     }
 
-    "class constructor is private" - {
-      illTyped("""
-      val foo = new Foo()
-    """, "constructor Foo in class Foo cannot be accessed .*")
+    "class constructor" - {
+      "public" - {
+        val foo = new Foo()
+      }
+      "private" - {
+        @data class Bar private ()
+        val bar = Bar()
+        illTyped("""
+          val bar0 = new Bar()
+        """, "constructor Bar in class Bar cannot be accessed.*")
+      }
     }
 
     "shapeless" - {
-      @data(publicConstructor = true) class Bar()
+      @data class Bar()
       import shapeless._
       * - {
         val gen = Generic[Bar]

@@ -58,8 +58,8 @@ object MoreFieldsTests extends TestSuite {
     }
 
     "shapeless" - {
-      @data(publicConstructor = true) class Bar(n: Int, s: String, d: Double)
-      @data(publicConstructor = true) class Baz(
+      @data class Bar(n: Int, s: String, d: Double)
+      @data class Baz(
           n: Int,
           s: String,
           @since d: Double = 1.0,
