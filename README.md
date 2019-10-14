@@ -67,7 +67,7 @@ binary compatibility much more tractable upon adding new fields (see below).
 
 In the example above, the `@data` macro generates code like the following (modulo macro hygiene):
 ```scala
-final class Foo private (val n: Int, val s: String) extends Product with Serializable {
+final class Foo(val n: Int, val s: String) extends Product with Serializable {
 
   def withN(n: Int) = new Foo(n = n, s = s)
   def withS(s: String) = new Foo(n = n, s = s)
