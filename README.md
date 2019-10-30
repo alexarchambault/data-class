@@ -57,7 +57,6 @@ implement its methods,
 
 It also adds things that differ from case classes:
 - add `final` modifier to the class,
-- make the constructors `private` by default (can be disabled, see [shapeless section](#shapeless) below),
 - for each field, add a corresponding `with` method (field `count: Int`
 generates a method `withCount(count: Int)` returning a new instance of the
 class with `count` updated).
@@ -122,6 +121,10 @@ import shapeless._
 Generic[Foo] // works
 ```
 
+Note that with shapeless `2.3.3` and prior versions, `Generic` derivation may fail
+if the body of the `@data` class contains `val`s or `lazy val`s, see
+[shapeless issue #934](https://github.com/milessabin/shapeless/issues/934).
+
 ### Adding fields
 
 In order to retain binary compatibility when adding fields, one should:
@@ -134,8 +137,7 @@ import dataclass._
 ```
 
 The `@since` annotation makes the `@data` macro generate `apply` methods
-compatible with those without the new fields. If the constructors
-are public, back-compatible constructors are generated too.
+compatible with those without the new fields.
 
 The example above generates the following `apply` methods in the companion object of `Foo`:
 ```scala
