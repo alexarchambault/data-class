@@ -1,5 +1,6 @@
 package dataclass
 
+import dataclass.TestUtil._
 import shapeless.test.illTyped
 import utest._
 
@@ -115,6 +116,26 @@ object OneFieldTests extends TestSuite {
         assert(false)
       } catch {
         case _: IndexOutOfBoundsException =>
+      }
+
+      if (productElemNameAvailable) {
+        val names = foo.productElementNames.toVector
+        val expectedNames = Seq("count")
+        assert(names == expectedNames)
+
+        try {
+          foo.productElementName(-1)
+          assert(false)
+        } catch {
+          case _: IndexOutOfBoundsException =>
+        }
+
+        try {
+          foo.productElementName(1)
+          assert(false)
+        } catch {
+          case _: IndexOutOfBoundsException =>
+        }
       }
     }
 

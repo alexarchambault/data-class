@@ -1,5 +1,6 @@
 package dataclass
 
+import dataclass.TestUtil._
 import shapeless.test.illTyped
 import utest._
 
@@ -112,6 +113,26 @@ object TwoFieldsTests extends TestSuite {
         assert(false)
       } catch {
         case _: IndexOutOfBoundsException =>
+      }
+
+      if (productElemNameAvailable) {
+        val names = foo.productElementNames.toVector
+        val expectedNames = Seq("a", "other")
+        assert(names == expectedNames)
+
+        try {
+          foo.productElementName(-1)
+          assert(false)
+        } catch {
+          case _: IndexOutOfBoundsException =>
+        }
+
+        try {
+          foo.productElementName(2)
+          assert(false)
+        } catch {
+          case _: IndexOutOfBoundsException =>
+        }
       }
     }
 

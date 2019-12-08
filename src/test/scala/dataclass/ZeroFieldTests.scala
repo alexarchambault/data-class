@@ -1,5 +1,6 @@
 package dataclass
 
+import dataclass.TestUtil._
 import shapeless.test.illTyped
 import utest._
 
@@ -110,6 +111,25 @@ object ZeroFieldTests extends TestSuite {
         assert(false)
       } catch {
         case _: IndexOutOfBoundsException =>
+      }
+
+      if (productElemNameAvailable) {
+        val names = foo.productElementNames.toVector
+        assert(names.isEmpty)
+
+        try {
+          foo.productElementName(-1)
+          assert(false)
+        } catch {
+          case _: IndexOutOfBoundsException =>
+        }
+
+        try {
+          foo.productElementName(0)
+          assert(false)
+        } catch {
+          case _: IndexOutOfBoundsException =>
+        }
       }
     }
 

@@ -6,6 +6,8 @@ import scala.annotation.tailrec
 private[dataclass] class Macros(val c: Context) extends ImplTransformers {
   import c.universe._
 
+  import dataclass.Macros._
+
   private val debug = sys.env
     .get("DATACLASS_MACROS_DEBUG")
     .map(_.toBoolean)
@@ -165,6 +167,28 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             }
 
           val productMethods = {
+
+            val prodElemNameMethods =
+              if (productElemNameAvailable) {
+                val elemNameCases = paramss.flatten.zipWithIndex
+                  .map {
+                    case (param, idx) =>
+                      val name = param.name.decodedName.toString
+                      cq"$idx => $name"
+                  }
+
+                Seq(
+                  q"""
+                    override def productElementName(n: _root_.scala.Int): _root_.java.lang.String =
+                      n match {
+                        case ..$elemNameCases
+                        case n => throw new _root_.java.lang.IndexOutOfBoundsException(n.toString)
+                      }
+                   """
+                )
+              } else
+                Nil
+
             val elemCases = paramss.flatten.zipWithIndex
               .map {
                 case (param, idx) =>
@@ -185,7 +209,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                     case n => throw new _root_.java.lang.IndexOutOfBoundsException(n.toString)
                   }
                """
-            )
+            ) ++ prodElemNameMethods
           }
 
           val toStringMethod =
@@ -398,6 +422,16 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
     }
 
     annottees.transformAnnottees(new Transformer(generateApplyMethods))
+  }
+
+}
+
+object Macros {
+
+  // productElementName added in 2.13
+  private[dataclass] val productElemNameAvailable = {
+    val sv = scala.util.Properties.versionNumberString
+    !sv.startsWith("2.11.") && !sv.startsWith("2.12.")
   }
 
 }
