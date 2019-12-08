@@ -172,6 +172,10 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               }
             Seq(
               q"""
+                override def productPrefix: _root_.java.lang.String =
+                  ${tpname.decodedName.toString}
+               """,
+              q"""
                 override def productArity: _root_.scala.Int = ${allParams.length}
                """,
               q"""

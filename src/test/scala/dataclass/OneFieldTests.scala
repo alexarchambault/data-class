@@ -118,6 +118,13 @@ object OneFieldTests extends TestSuite {
       }
     }
 
+    "productPrefix" - {
+      val foo = Foo(1)
+      val prefix = foo.productPrefix
+      val expectedPrefix = "Foo"
+      assert(prefix == expectedPrefix)
+    }
+
     "type params" - {
       "one" - {
         "used" - {

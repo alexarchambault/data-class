@@ -113,6 +113,13 @@ object ZeroFieldTests extends TestSuite {
       }
     }
 
+    "productPrefix" - {
+      val foo = Foo()
+      val prefix = foo.productPrefix
+      val expectedPrefix = "Foo"
+      assert(prefix == expectedPrefix)
+    }
+
     "serializable" - {
       val foo = Foo()
       assert(foo.isInstanceOf[Serializable])

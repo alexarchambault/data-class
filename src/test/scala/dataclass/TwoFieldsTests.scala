@@ -115,6 +115,13 @@ object TwoFieldsTests extends TestSuite {
       }
     }
 
+    "productPrefix" - {
+      val foo = Foo(1, "c")
+      val prefix = foo.productPrefix
+      val expectedPrefix = "Foo"
+      assert(prefix == expectedPrefix)
+    }
+
     "type params" - {
       "one" - {
         "used" - {

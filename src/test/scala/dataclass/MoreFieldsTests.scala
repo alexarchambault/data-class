@@ -119,6 +119,20 @@ object MoreFieldsTests extends TestSuite {
       }
     }
 
+    "productPrefix" - {
+      @data class Foo(
+          n: Int,
+          s: String,
+          @since("") b: Boolean = true,
+          d: Double = 1.0
+      )
+
+      val foo = Foo(1, "a")
+      val prefix = foo.productPrefix
+      val expectedPrefix = "Foo"
+      assert(prefix == expectedPrefix)
+    }
+
     "has toString" - {
       "def" - {
         @data class Foo(password: String) {
