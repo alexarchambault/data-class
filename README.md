@@ -13,7 +13,7 @@ maintaining binary compatiblity.
 
 Add to your `build.sbt`,
 ```scala
-libraryDependencies += "io.github.alexarchambault" %% "data-class" % "0.2.0"
+libraryDependencies += "io.github.alexarchambault" %% "data-class" % "0.2.1"
 ```
 
 The latest version is [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault/data-class_2.13.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault/data-class_2.13).
