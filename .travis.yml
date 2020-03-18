@@ -26,7 +26,7 @@ script: sbt ++$SCALA_VERSION test test-proj-v1/publishLocal test-proj-v2/mimaRep
 jobs:
   include:
   - env: SCALA_VERSION=2.13.1
-  - env: SCALA_VERSION=2.12.10
+  - env: SCALA_VERSION=2.12.11
   - env: SCALA_VERSION=2.11.12
   - name: formatting
     script: scalafmt --test

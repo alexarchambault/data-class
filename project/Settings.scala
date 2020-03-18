@@ -4,7 +4,7 @@ import sbt.Keys._
 object Settings {
 
   def scala213 = "2.13.1"
-  def scala212 = "2.12.10"
+  def scala212 = "2.12.11"
   def scala211 = "2.11.12"
 
   private lazy val isScala211Or212 = Def.setting {
@@ -19,7 +19,7 @@ object Settings {
       if (isScala211Or212.value)
         Seq(
           compilerPlugin(
-            ("org.scalamacros" % "paradise" % "2.1.0").cross(CrossVersion.full)
+            ("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)
           )
         )
       else
