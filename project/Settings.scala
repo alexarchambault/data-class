@@ -19,7 +19,7 @@ object Settings {
       if (isScala211Or212.value)
         Seq(
           compilerPlugin(
-            ("org.scalamacros" % "paradise" % "2.1.0").cross(CrossVersion.full)
+            ("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)
           )
         )
       else
