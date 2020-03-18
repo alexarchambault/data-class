@@ -169,6 +169,14 @@ object TwoFieldsTests extends TestSuite {
           assert(barS != barS2)
           assert(barI == barS2)
         }
+
+        "setters" - {
+          @data class Bar[T](n: Int, s: String)
+          val barI: Bar[Int] = Bar[Int](2, "a")
+          val barNewN: Bar[Int] = barI.withN(3)
+          assert(barNewN.n == 3)
+        }
+
       }
 
       "two" - {

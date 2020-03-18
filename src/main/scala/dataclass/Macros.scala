@@ -25,6 +25,9 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                 ..$stats
               }""" =>
           val allParams = paramss.flatten
+          val tparamsRef = tparams.map { t =>
+            tq"${t.name}"
+          }
 
           val hasToString = {
             def fromStats = stats.exists {
@@ -98,7 +101,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                     )
                   val fn = p.name.decodedName.toString.capitalize
                   val withDefIdent = TermName(s"with$fn")
-                  q"def $withDefIdent(${p.name}: ${p.tpt}) = new $tpname(...$namedArgs0)"
+                  q"def $withDefIdent(${p.name}: ${p.tpt}) = new $tpname[..$tparamsRef](...$namedArgs0)"
               }
           }
 
@@ -111,9 +114,6 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                   TypeDef(p.mods, TypeName(s"X$n"), p.tparams, p.rhs)
               }
               tq"({type L[..$tparams0]=$WildcardType})#L"
-          }
-          val tparamsRef = tparams.map { t =>
-            tq"${t.name}"
           }
 
           val equalMethods = {
