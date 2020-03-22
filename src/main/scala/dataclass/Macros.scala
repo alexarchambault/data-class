@@ -382,7 +382,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                   .map(p => q"${p.name}") ++ b.map(_.rhs)) :: paramss.tail.map(
                   _.map(p => q"${p.name}")
                 )})"""
-              } else
+              }
+            else
               Nil
 
           val mdef0 =

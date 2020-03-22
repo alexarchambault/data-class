@@ -15,4 +15,4 @@ fi
 export COURSIER_EXPERIMENTAL=1
 
 cs install sbt-launcher:1.2.17
-cs install scalafmt:2.0.1
+cs install scalafmt:2.4.2

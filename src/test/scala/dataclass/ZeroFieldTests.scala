@@ -44,28 +44,32 @@ object ZeroFieldTests extends TestSuite {
         @data class Bar[T]()
         val barI = Bar[Int]()
         val barS = Bar[String]()
-        assert(barI == barS) // type erasure, both instances are the same at runtime
+        // type erasure, both instances are the same at runtime
+        assert(barI == barS)
       }
 
       "two" - {
         @data class Bar[T, U]()
         val barI = Bar[Int, Double]()
         val barS = Bar[String, Long]()
-        assert(barI == barS) // type erasure, both instances are the same at runtime
+        // type erasure, both instances are the same at runtime
+        assert(barI == barS)
       }
 
       "three" - {
         @data class Bar[T, U, V]()
         val barI = Bar[Int, Double, Int]()
         val barS = Bar[String, Long, Long]()
-        assert(barI == barS) // type erasure, both instances are the same at runtime
+        // type erasure, both instances are the same at runtime
+        assert(barI == barS)
       }
 
       "higher kind" - {
         @data class Bar[F[_]]()
         val barF = Bar[Future]()
         val barL = Bar[List]()
-        assert(barF == barL) // type erasure, both instances are the same at runtime
+        // type erasure, both instances are the same at runtime
+        assert(barF == barL)
       }
     }
 
