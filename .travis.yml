@@ -36,3 +36,4 @@ jobs:
     script: scalafmt --test
   - stage: release
     script: sbt ci-release
+    jdk: openjdk11
