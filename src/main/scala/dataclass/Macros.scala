@@ -13,8 +13,10 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
     .map(_.toBoolean)
     .getOrElse(java.lang.Boolean.getBoolean("dataclass.macros.debug"))
 
-  private class Transformer(generateApplyMethods: Boolean)
-      extends ImplTransformer {
+  private class Transformer(
+      generateApplyMethods: Boolean,
+      generateOptionSetters: Boolean
+  ) extends ImplTransformer {
     override def transformClass(
         cdef: ClassDef,
         mdef: ModuleDef
@@ -92,7 +94,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
 
           val setters = paramss.zipWithIndex.flatMap {
             case (l, groupIdx) =>
-              l.zipWithIndex.map {
+              l.zipWithIndex.flatMap {
                 case (p, idx) =>
                   val namedArgs0 =
                     namedArgs.updated(
@@ -101,7 +103,34 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                     )
                   val fn = p.name.decodedName.toString.capitalize
                   val withDefIdent = TermName(s"with$fn")
-                  q"def $withDefIdent(${p.name}: ${p.tpt}) = new $tpname[..$tparamsRef](...$namedArgs0)"
+
+                  val extraMethods =
+                    if (generateOptionSetters) {
+                      val wrappedOptionTpe = p.tpt match {
+                        case AppliedTypeTree(
+                            Ident(TypeName("Option")),
+                            List(wrapped)
+                            ) =>
+                          Seq(wrapped)
+                        case _ => Nil
+                      }
+
+                      wrappedOptionTpe.map { tpe0 =>
+                        val namedArgs0 =
+                          namedArgs.updated(
+                            groupIdx,
+                            namedArgs(groupIdx).updated(
+                              idx,
+                              q"${p.name}=_root_.scala.Some(${p.name})"
+                            )
+                          )
+                        q"def $withDefIdent(${p.name}: $tpe0) = new $tpname[..$tparamsRef](...$namedArgs0)"
+                      }
+                    } else
+                      Nil
+
+                  q"def $withDefIdent(${p.name}: ${p.tpt}) = new $tpname[..$tparamsRef](...$namedArgs0)" +:
+                    extraMethods
               }
           }
 
@@ -422,7 +451,14 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       case _              => true
     }
 
-    annottees.transformAnnottees(new Transformer(generateApplyMethods))
+    val generateOptionSetters = params.exists {
+      case q"optionSetters=true" => true
+      case _                     => false
+    }
+
+    annottees.transformAnnottees(
+      new Transformer(generateApplyMethods, generateOptionSetters)
+    )
   }
 
 }
