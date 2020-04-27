@@ -49,6 +49,21 @@ object OneFieldTests extends TestSuite {
       assert(foo.count == 1)
       assert(foo2.count == 2)
     }
+    "option setter" - {
+      @data(optionSetters = true) class Bar(count: Option[Int] = None)
+      val bar = Bar()
+      val bar2 = bar.withCount(2)
+      assert(bar.count == None)
+      assert(bar2.count == Some(2))
+    }
+    "no option setter" - {
+      @data class Bar(count: Option[Int] = None)
+      val bar = Bar()
+      illTyped("""
+        val bar2 = bar.withCount(2)
+      """, "type mismatch;.*")
+      assert(bar.count == None)
+    }
 
     "tuple" - {
       @data class Foo0(a: Int) {

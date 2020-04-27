@@ -20,6 +20,23 @@ object MoreFieldsTests extends TestSuite {
       assert(t == (1, "a", false, 1.2))
     }
 
+    "option setters" - {
+      @data(optionSetters = true) class Bar(
+          n: Int,
+          s: String,
+          b: Option[Boolean] = None,
+          d: Double = 1.0
+      )
+      val foo = Bar(1, "a")
+      val foo2 = foo.withB(true)
+      val foo3 = foo.withB(Some(false))
+      val foo4 = foo2.withB(None)
+      assert(foo.b == None)
+      assert(foo2.b == Some(true))
+      assert(foo3.b == Some(false))
+      assert(foo4.b == None)
+    }
+
     "since annotation" - {
       * - {
         illTyped(

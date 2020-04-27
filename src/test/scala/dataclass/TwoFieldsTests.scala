@@ -62,6 +62,27 @@ object TwoFieldsTests extends TestSuite {
       assert(foo4.a == 2)
       assert(foo4.other == "u")
     }
+    "option setters" - {
+      @data(optionSetters = true) class Bar(
+          a: Int,
+          other: Option[String] = None
+      )
+      val bar = Bar(1)
+      val bar2 = bar.withA(2)
+      val bar3 = bar.withOther("t")
+      val bar4 = bar2.withOther(Some("u"))
+      val bar5 = bar2.withOther(None)
+      assert(bar.a == 1)
+      assert(bar.other == None)
+      assert(bar2.a == 2)
+      assert(bar2.other == None)
+      assert(bar3.a == 1)
+      assert(bar3.other == Some("t"))
+      assert(bar4.a == 2)
+      assert(bar4.other == Some("u"))
+      assert(bar5.a == 2)
+      assert(bar5.other == None)
+    }
 
     "tuple" - {
       @data class Foo0(a: Int, other: String) {
