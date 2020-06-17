@@ -32,17 +32,18 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
           }
 
           val hasToString = {
-            def fromStats = stats.exists {
-              case DefDef(_, nme, tparams, vparamss, _, _)
-                  if nme.decodedName.toString == "toString" && tparams.isEmpty && vparamss
-                    .forall(_.isEmpty) =>
-                true
-              case t @ ValDef(_, name, _, _)
-                  if name.decodedName.toString == "toString" =>
-                true
-              case _ =>
-                false
-            }
+            def fromStats =
+              stats.exists {
+                case DefDef(_, nme, tparams, vparamss, _, _)
+                    if nme.decodedName.toString == "toString" && tparams.isEmpty && vparamss
+                      .forall(_.isEmpty) =>
+                  true
+                case t @ ValDef(_, name, _, _)
+                    if name.decodedName.toString == "toString" =>
+                  true
+                case _ =>
+                  false
+              }
 
             val fromFields =
               allParams.exists(_.name.decodedName.toString() == "toString")
@@ -51,17 +52,18 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
           }
 
           val hasHashCode = {
-            def fromStats = stats.exists {
-              case DefDef(_, nme, tparams, vparamss, _, _)
-                  if nme.decodedName.toString == "hashCode" && tparams.isEmpty && vparamss
-                    .forall(_.isEmpty) =>
-                true
-              case t @ ValDef(_, name, _, _)
-                  if name.decodedName.toString == "hashCode" =>
-                true
-              case _ =>
-                false
-            }
+            def fromStats =
+              stats.exists {
+                case DefDef(_, nme, tparams, vparamss, _, _)
+                    if nme.decodedName.toString == "hashCode" && tparams.isEmpty && vparamss
+                      .forall(_.isEmpty) =>
+                  true
+                case t @ ValDef(_, name, _, _)
+                    if name.decodedName.toString == "hashCode" =>
+                  true
+                case _ =>
+                  false
+              }
 
             val fromFields =
               allParams.exists(_.name.decodedName.toString() == "hashCode")
@@ -70,17 +72,18 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
           }
 
           val hasTuple = {
-            def fromStats = stats.exists {
-              case DefDef(_, nme, tparams, vparamss, _, _)
-                  if nme.decodedName.toString == "tuple" && tparams.isEmpty && vparamss
-                    .forall(_.isEmpty) =>
-                true
-              case t @ ValDef(_, name, _, _)
-                  if name.decodedName.toString == "tuple" =>
-                true
-              case _ =>
-                false
-            }
+            def fromStats =
+              stats.exists {
+                case DefDef(_, nme, tparams, vparamss, _, _)
+                    if nme.decodedName.toString == "tuple" && tparams.isEmpty && vparamss
+                      .forall(_.isEmpty) =>
+                  true
+                case t @ ValDef(_, name, _, _)
+                    if name.decodedName.toString == "tuple" =>
+                  true
+                case _ =>
+                  false
+              }
 
             val fromFields =
               allParams.exists(_.name.decodedName.toString() == "tuple")
@@ -108,8 +111,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                     if (generateOptionSetters) {
                       val wrappedOptionTpe = p.tpt match {
                         case AppliedTypeTree(
-                            Ident(TypeName("Option")),
-                            List(wrapped)
+                              Ident(TypeName("Option")),
+                              List(wrapped)
                             ) =>
                           Seq(wrapped)
                         case _ => Nil
