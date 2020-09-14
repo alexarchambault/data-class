@@ -38,9 +38,12 @@ object TwoFieldsTests extends TestSuite {
       "private" - {
         @data class Bar private (n: Int, s: String)
         val bar = Bar(4, "b")
-        illTyped("""
+        illTyped(
+          """
           val bar0 = new Bar(5, "c")
-        """, "constructor Bar in class Bar cannot be accessed.*")
+        """,
+          "constructor Bar in class Bar cannot be accessed.*"
+        )
       }
     }
     "accessors" - {
@@ -96,9 +99,12 @@ object TwoFieldsTests extends TestSuite {
     "private field" - {
       @data class Bar(private val n: Int, s: String)
       val bar = Bar(2, "a")
-      illTyped("""
+      illTyped(
+        """
         bar.n
-      """, "value n in class Bar cannot be accessed in Bar")
+      """,
+        "value n in class Bar cannot be accessed in Bar"
+      )
       assert(bar.s == "a")
     }
 

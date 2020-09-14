@@ -34,9 +34,12 @@ object OneFieldTests extends TestSuite {
       "private" - {
         @data class Bar private (n: Int)
         val bar = Bar(2)
-        illTyped("""
+        illTyped(
+          """
           val bar0 = new Bar(3)
-        """, "constructor Bar in class Bar cannot be accessed.*")
+        """,
+          "constructor Bar in class Bar cannot be accessed.*"
+        )
       }
     }
     "accessor" - {
@@ -59,9 +62,12 @@ object OneFieldTests extends TestSuite {
     "no option setter" - {
       @data class Bar(count: Option[Int] = None)
       val bar = Bar()
-      illTyped("""
+      illTyped(
+        """
         val bar2 = bar.withCount(2)
-      """, "type mismatch;.*")
+      """,
+        "type mismatch;.*"
+      )
       assert(bar.count == None)
     }
 
@@ -77,9 +83,12 @@ object OneFieldTests extends TestSuite {
     "private field" - {
       @data class Bar(private val n: Int)
       val bar = Bar(2)
-      illTyped("""
+      illTyped(
+        """
         bar.n
-      """, "value n in class Bar cannot be accessed in Bar")
+      """,
+        "value n in class Bar cannot be accessed in Bar"
+      )
     }
 
     "default value" - {
@@ -94,9 +103,12 @@ object OneFieldTests extends TestSuite {
       }
       * - {
         val bar = Bar(3)
-        illTyped("""
+        illTyped(
+          """
           bar.withN()
-        """, "not enough arguments for method withN.*")
+        """,
+          "not enough arguments for method withN.*"
+        )
       }
     }
 
@@ -242,9 +254,12 @@ object OneFieldTests extends TestSuite {
             new Bar(path.stripSuffix("/"))
         }
 
-        illTyped("""
+        illTyped(
+          """
           val bar1 = new Bar("a")
-        """, "constructor Bar in class Bar cannot be accessed.*")
+        """,
+          "constructor Bar in class Bar cannot be accessed.*"
+        )
 
         val bar = Bar("foo/1")
         val bar0 = Bar("foo/1/")
