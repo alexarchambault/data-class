@@ -33,9 +33,12 @@ object ZeroFieldTests extends TestSuite {
 
       "actually private" - {
         val foo = Foo0()
-        illTyped("""
+        illTyped(
+          """
           foo.tuple
-        """, "method tuple in class Foo0 cannot be accessed in Foo0")
+        """,
+          "method tuple in class Foo0 cannot be accessed in Foo0"
+        )
       }
     }
 
@@ -80,9 +83,12 @@ object ZeroFieldTests extends TestSuite {
       "private" - {
         @data class Bar private ()
         val bar = Bar()
-        illTyped("""
+        illTyped(
+          """
           val bar0 = new Bar()
-        """, "constructor Bar in class Bar cannot be accessed.*")
+        """,
+          "constructor Bar in class Bar cannot be accessed.*"
+        )
       }
     }
 
