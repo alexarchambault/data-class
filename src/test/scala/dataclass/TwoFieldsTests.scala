@@ -103,7 +103,7 @@ object TwoFieldsTests extends TestSuite {
         """
         bar.n
       """,
-        "value n in class Bar cannot be accessed in Bar"
+        "value n in class Bar cannot be accessed .* Bar.*"
       )
       assert(bar.s == "a")
     }
