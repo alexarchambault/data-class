@@ -37,7 +37,7 @@ object ZeroFieldTests extends TestSuite {
           """
           foo.tuple
         """,
-          "method tuple in class Foo0 cannot be accessed in Foo0"
+          "method tuple in class Foo0 cannot be accessed .* Foo0.*"
         )
       }
     }
