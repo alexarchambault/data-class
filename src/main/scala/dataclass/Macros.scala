@@ -127,12 +127,12 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                               q"${p.name}=_root_.scala.Some(${p.name})"
                             )
                           )
-                        q"def $withDefIdent(${p.name}: $tpe0) = new $tpname[..$tparamsRef](...$namedArgs0)"
+                        q"def $withDefIdent(${p.name}: $tpe0) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)"
                       }
                     } else
                       Nil
 
-                  q"def $withDefIdent(${p.name}: ${p.tpt}) = new $tpname[..$tparamsRef](...$namedArgs0)" +:
+                  q"def $withDefIdent(${p.name}: ${p.tpt}) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)" +:
                     extraMethods
               }
           }

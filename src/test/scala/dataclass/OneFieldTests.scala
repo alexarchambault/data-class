@@ -70,6 +70,15 @@ object OneFieldTests extends TestSuite {
       )
       assert(bar.count == None)
     }
+    "setter calls apply" - {
+      @data(apply = false) class CrazyBar(count: Int)
+      object CrazyBar {
+        def apply(count: Int): CrazyBar = new CrazyBar(0)
+      }
+      val bar = new CrazyBar(1)
+      assert(bar.count == 1)
+      assert(bar.withCount(2).count == 0)
+    }
 
     "tuple" - {
       @data class Foo0(a: Int) {
