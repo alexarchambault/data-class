@@ -161,7 +161,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                """,
               q"""
                 override def equals(obj: Any): _root_.scala.Boolean =
-                  canEqual(obj) && {
+                  (this.eq(obj.asInstanceOf[AnyRef])) || canEqual(obj) && {
                     val other = obj.asInstanceOf[$tpname[..$wildcardedTparams]]
                     $fldChecks
                   }
