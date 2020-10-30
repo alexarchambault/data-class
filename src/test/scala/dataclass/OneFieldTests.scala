@@ -5,7 +5,6 @@ import shapeless.test.illTyped
 import utest._
 
 import scala.concurrent.Future
-import scala.util.Random
 
 object OneFieldTests extends TestSuite {
   val tests = Tests {
