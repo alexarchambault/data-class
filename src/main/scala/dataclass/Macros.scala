@@ -16,7 +16,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
   private class Transformer(
       generateApplyMethods: Boolean,
       generateOptionSetters: Boolean,
-      generateSettersCallApply: Boolean,
+      generateSettersCallApply: Boolean
   ) extends ImplTransformer {
     override def transformClass(
         cdef: ClassDef,
