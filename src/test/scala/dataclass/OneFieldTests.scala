@@ -21,6 +21,19 @@ object OneFieldTests extends TestSuite {
         assert(foo != foo2)
       }
     }
+    "reference equals" - {
+      class Crazy() {
+        var i = -1
+        override def equals(obj: Any): Boolean = { i += 1; i % 2 == 0 }
+      }
+      @data class FooCrazy(count: Crazy)
+      val crazy = new Crazy()
+      val foo = FooCrazy(crazy)
+      assert(crazy == crazy)
+      assert(crazy != crazy)
+      assert(foo == foo)
+      assert(foo == foo)
+    }
     "toString" - {
       val foo = Foo(1)
       val str = foo.toString

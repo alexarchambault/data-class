@@ -81,7 +81,7 @@ final class Foo(val n: Int, val s: String) extends Product with Serializable {
   }
 
   override def canEqual(obj: Any): Boolean = obj != null && obj.isInstanceOf[Foo]
-  override def equals(obj: Any): Boolean = canEqual(obj) && {
+  override def equals(obj: Any): Boolean = this.eq(obj.asInstanceOf[AnyRef]) || canEqual(obj) && {
     val other = obj.asInstanceOf[Foo]
     n == other.n && s == other.s
   })
