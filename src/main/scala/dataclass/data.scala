@@ -8,7 +8,9 @@ class data(
     apply: Boolean = true,
     publicConstructor: Boolean = true,
     /** Whether to generate `withFoo(foo: Foo)` methods for fields like `foo: Option[Foo]`) */
-    optionSetters: Boolean = false
+    optionSetters: Boolean = false,
+    /** Whether setters will call apply or new */
+    settersCallApply: Boolean = false
 ) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro Macros.impl
 }

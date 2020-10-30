@@ -71,7 +71,7 @@ object OneFieldTests extends TestSuite {
       assert(bar.count == None)
     }
     "setter calls apply" - {
-      @data(apply = false) class CrazyBar(count: Int)
+      @data(apply = false, settersCallApply = true) class CrazyBar(count: Int)
       object CrazyBar {
         def apply(count: Int): CrazyBar = new CrazyBar(0)
       }

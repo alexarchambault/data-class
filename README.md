@@ -68,8 +68,8 @@ In the example above, the `@data` macro generates code like the following (modul
 ```scala
 final class Foo(val n: Int, val s: String) extends Product with Serializable {
 
-  def withN(n: Int) = Foo(n = n, s = s)
-  def withS(s: String) = Foo(n = n, s = s)
+  def withN(n: Int) = new Foo(n = n, s = s)
+  def withS(s: String) = new Foo(n = n, s = s)
 
   override def toString: String = {
     val b = new StringBuilder("Foo(")

@@ -15,7 +15,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
 
   private class Transformer(
       generateApplyMethods: Boolean,
-      generateOptionSetters: Boolean
+      generateOptionSetters: Boolean,
+      generateSettersCallApply: Boolean,
   ) extends ImplTransformer {
     override def transformClass(
         cdef: ClassDef,
@@ -107,6 +108,13 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                   val fn = p.name.decodedName.toString.capitalize
                   val withDefIdent = TermName(s"with$fn")
 
+                  def settersCallApply(tpe0: Tree, namedArgs0: List[List[Tree]]) = {
+                    if(generateSettersCallApply)
+                      q"def $withDefIdent(${p.name}: $tpe0) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)"
+                    else
+                      q"def $withDefIdent(${p.name}: $tpe0) = new $tpname[..$tparamsRef](...$namedArgs0)"
+                  }
+
                   val extraMethods =
                     if (generateOptionSetters) {
                       val wrappedOptionTpe = p.tpt match {
@@ -127,13 +135,12 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                               q"${p.name}=_root_.scala.Some(${p.name})"
                             )
                           )
-                        q"def $withDefIdent(${p.name}: $tpe0) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)"
+                        settersCallApply(tpe0, namedArgs0)
                       }
                     } else
                       Nil
 
-                  q"def $withDefIdent(${p.name}: ${p.tpt}) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)" +:
-                    extraMethods
+                  settersCallApply(p.tpt, namedArgs0) +: extraMethods
               }
           }
 
@@ -459,8 +466,13 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       case _                     => false
     }
 
+    val generateSettersCallApply = params.exists {
+      case q"settersCallApply=true" => true
+      case _                        => false
+    }
+
     annottees.transformAnnottees(
-      new Transformer(generateApplyMethods, generateOptionSetters)
+      new Transformer(generateApplyMethods, generateOptionSetters, generateSettersCallApply)
     )
   }
 
