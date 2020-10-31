@@ -108,12 +108,14 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                   val fn = p.name.decodedName.toString.capitalize
                   val withDefIdent = TermName(s"with$fn")
 
-                  def settersCallApply(tpe0: Tree, namedArgs0: List[List[Tree]]) = {
-                    if(generatedSettersCallApply)
+                  def settersCallApply(
+                      tpe0: Tree,
+                      namedArgs0: List[List[Tree]]
+                  ) =
+                    if (generatedSettersCallApply)
                       q"def $withDefIdent(${p.name}: $tpe0) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)"
                     else
                       q"def $withDefIdent(${p.name}: $tpe0) = new $tpname[..$tparamsRef](...$namedArgs0)"
-                  }
 
                   val extraMethods =
                     if (generateOptionSetters) {
@@ -472,7 +474,11 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
     }
 
     annottees.transformAnnottees(
-      new Transformer(generateApplyMethods, generateOptionSetters, generatedSettersCallApply)
+      new Transformer(
+        generateApplyMethods,
+        generateOptionSetters,
+        generatedSettersCallApply
+      )
     )
   }
 
