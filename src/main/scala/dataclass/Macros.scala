@@ -16,7 +16,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
   private class Transformer(
       generateApplyMethods: Boolean,
       generateOptionSetters: Boolean,
-      generateSettersCallApply: Boolean
+      generatedSettersCallApply: Boolean
   ) extends ImplTransformer {
     override def transformClass(
         cdef: ClassDef,
@@ -109,7 +109,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                   val withDefIdent = TermName(s"with$fn")
 
                   def settersCallApply(tpe0: Tree, namedArgs0: List[List[Tree]]) = {
-                    if(generateSettersCallApply)
+                    if(generatedSettersCallApply)
                       q"def $withDefIdent(${p.name}: $tpe0) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)"
                     else
                       q"def $withDefIdent(${p.name}: $tpe0) = new $tpname[..$tparamsRef](...$namedArgs0)"
@@ -466,13 +466,13 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       case _                     => false
     }
 
-    val generateSettersCallApply = params.exists {
+    val generatedSettersCallApply = params.exists {
       case q"settersCallApply=true" => true
       case _                        => false
     }
 
     annottees.transformAnnottees(
-      new Transformer(generateApplyMethods, generateOptionSetters, generateSettersCallApply)
+      new Transformer(generateApplyMethods, generateOptionSetters, generatedSettersCallApply)
     )
   }
 
