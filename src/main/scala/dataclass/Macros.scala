@@ -188,22 +188,25 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                 .map { param =>
                   q"code = 37 * code + this.${param.name}.##"
                 }
-              if (generatedCachedHashCode)
+              if (generatedCachedHashCode) {
+                val Sentinel = q"0"
                 Seq(
-                  q"""private var __hasHashCode: Boolean = false""",
-                  q"""private var __hashCode: Int = _""",
+                  q"""private var __hashCode: _root_.scala.Int = $Sentinel""",
                   q"""override def hashCode: _root_.scala.Int = {
-                      if (!__hasHashCode) {
+                      if (__hashCode == $Sentinel) {
                         var code = 17 + ${tpname.decodedName.toString()}.##
                         ..$fldLines
-                        __hashCode = 37 * code
-                        __hasHashCode = true
+                        code *= 37
+                        if (code == $Sentinel) {
+                          code = 1
+                        }
+                        __hashCode = code
                       }
                       __hashCode
                     }
                  """
                 )
-              else
+              } else
                 Seq(
                   q"""override def hashCode: _root_.scala.Int = {
                     var code = 17 + ${tpname.decodedName.toString()}.##
