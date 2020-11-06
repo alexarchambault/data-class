@@ -14,10 +14,10 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
     .getOrElse(java.lang.Boolean.getBoolean("dataclass.macros.debug"))
 
   private class Transformer(
-                             generateApplyMethods: Boolean,
-                             generateOptionSetters: Boolean,
-                             generatedSettersCallApply: Boolean,
-                             cachedHashCode: Boolean
+      generateApplyMethods: Boolean,
+      generateOptionSetters: Boolean,
+      generatedSettersCallApply: Boolean,
+      cachedHashCode: Boolean
   ) extends ImplTransformer {
     override def transformClass(
         cdef: ClassDef,
@@ -165,7 +165,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               }
               .foldLeft[Tree](q"true")((a, b) => q"$a && $b")
 
-            val hashCheck = if (cachedHashCode) q"obj.hashCode == hashCode" else q"true"
+            val hashCheck =
+              if (cachedHashCode) q"obj.hashCode == hashCode" else q"true"
             Seq(
               q"""
                 override def canEqual(obj: Any): _root_.scala.Boolean =
