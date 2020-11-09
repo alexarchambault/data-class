@@ -12,7 +12,7 @@ class data(
     /** Whether setters will call apply or new */
     settersCallApply: Boolean = false,
     /** Whether hashCode will be cached */
-    cachedHashCode: Boolean = false,
+    cachedHashCode: Boolean = false
 ) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro Macros.impl
 }
