@@ -1,0 +1,63 @@
+name: CI
+on:
+  push:
+    branches:
+    - master
+    tags:
+    - "v*"
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        JDK: ["8", "11"]
+        SCALA_VERSION: ["2.11.12", "2.12.12", "2.13.3"]
+    name: Test (JDK ${{ matrix.JDK }}, Scala ${{ matrix.SCALA_VERSION }})
+    steps:
+    - uses: actions/checkout@v2
+    - uses: coursier/cache-action@v5
+      with:
+        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\"]"
+        extraKey: ${{ matrix.JDK }}-${{ matrix.SCALA_VERSION }}
+    - run: .github/scripts/setup.sh
+      env:
+        JDK: ${{ matrix.JDK }}
+    - name: Compile
+      run: sbt ++$SCALA_VERSION test test-proj-v1/publishLocal test-proj-v2/mimaReportBinaryIssues proj-v1-user/compile
+      env:
+        SCALA_VERSION: ${{ matrix.SCALA_VERSION }}
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: coursier/cache-action@v5
+      with:
+        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\"]"
+        extraKey: fmt
+    - run: .github/scripts/setup.sh
+    - name: Check formatting
+      run: scalafmt --test
+
+  publish:
+    needs: [test, fmt]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: coursier/cache-action@v5
+      with:
+        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\"]"
+        extraKey: publish
+    - run: .github/scripts/setup.sh
+    - uses: olafurpg/setup-gpg@v2
+    - name: Release
+      run: sbt ci-release
+      env:
+        PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+        PGP_SECRET: ${{ secrets.PGP_SECRET }}
+        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
