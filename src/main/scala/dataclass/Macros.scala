@@ -16,7 +16,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
   private class Transformer(
       generateApplyMethods: Boolean,
       generateOptionSetters: Boolean,
-      generatedSettersCallApply: Boolean
+      generatedSettersCallApply: Boolean,
+      cachedHashCode: Boolean
   ) extends ImplTransformer {
     override def transformClass(
         cdef: ClassDef,
@@ -163,10 +164,13 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                 q"this.${param.name} == other.${param.name}"
               }
               .foldLeft[Tree](q"true")((a, b) => q"$a && $b")
+
+            val hashCheck =
+              if (cachedHashCode) q"obj.hashCode == hashCode" else q"true"
             Seq(
               q"""
                 override def canEqual(obj: Any): _root_.scala.Boolean =
-                  obj != null && obj.isInstanceOf[$tpname[..$wildcardedTparams]]
+                  obj != null && obj.isInstanceOf[$tpname[..$wildcardedTparams]] && $hashCheck
                """,
               q"""
                 override def equals(obj: Any): _root_.scala.Boolean =
@@ -185,14 +189,33 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                 .map { param =>
                   q"code = 37 * code + this.${param.name}.##"
                 }
-              Seq(
-                q"""override def hashCode: _root_.scala.Int = {
+              if (cachedHashCode) {
+                val Sentinel = q"0"
+                Seq(
+                  q"""private var __hashCode: _root_.scala.Int = $Sentinel""",
+                  q"""override def hashCode: _root_.scala.Int = {
+                      if (__hashCode == $Sentinel) {
+                        var code = 17 + ${tpname.decodedName.toString()}.##
+                        ..$fldLines
+                        code *= 37
+                        if (code == $Sentinel) {
+                          code = 1
+                        }
+                        __hashCode = code
+                      }
+                      __hashCode
+                    }
+                 """
+                )
+              } else
+                Seq(
+                  q"""override def hashCode: _root_.scala.Int = {
                     var code = 17 + ${tpname.decodedName.toString()}.##
                     ..$fldLines
                     37 * code
                   }
                """
-              )
+                )
             }
 
           val tupleMethod =
@@ -473,11 +496,17 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       case _                        => false
     }
 
+    val generatedCachedHashCode = params.exists {
+      case q"cachedHashCode=true" => true
+      case _                      => false
+    }
+
     annottees.transformAnnottees(
       new Transformer(
         generateApplyMethods,
         generateOptionSetters,
-        generatedSettersCallApply
+        generatedSettersCallApply,
+        generatedCachedHashCode
       )
     )
   }
