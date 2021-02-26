@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         JDK: ["8", "11"]
-        SCALA_VERSION: ["2.11.12", "2.12.12", "2.13.3"]
+        SCALA_VERSION: ["2.13.5", "2.12.12", "2.13.3"]
     name: Test (JDK ${{ matrix.JDK }}, Scala ${{ matrix.SCALA_VERSION }})
     steps:
     - uses: actions/checkout@v2
