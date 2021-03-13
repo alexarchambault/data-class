@@ -14,15 +14,15 @@ jobs:
       fail-fast: false
       matrix:
         JDK: ["8", "11"]
-        SCALA_VERSION: ["2.11.12", "2.12.13", "2.13.3"]
+        SCALA_VERSION: ["2.11.12", "2.12.13", "2.13.5"]
     name: Test (JDK ${{ matrix.JDK }}, Scala ${{ matrix.SCALA_VERSION }})
     steps:
     - uses: actions/checkout@v2
-    - uses: coursier/cache-action@v5
+    - uses: coursier/cache-action@v6
+    - uses: laughedelic/coursier-setup@v1
       with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\"]"
-        extraKey: ${{ matrix.JDK }}-${{ matrix.SCALA_VERSION }}
-    - run: .github/scripts/setup.sh
+        jvm: 8
+        apps: sbt-launcher
       env:
         JDK: ${{ matrix.JDK }}
     - name: Compile
@@ -34,11 +34,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: coursier/cache-action@v5
+    - uses: coursier/cache-action@v6
+    - uses: laughedelic/coursier-setup@v1
       with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\"]"
-        extraKey: fmt
-    - run: .github/scripts/setup.sh
+        jvm: 8
+        apps: scalafmt
     - name: Check formatting
       run: scalafmt --test
 
@@ -48,11 +48,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: coursier/cache-action@v5
+    - uses: coursier/cache-action@v6
+    - uses: laughedelic/coursier-setup@v1
       with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\"]"
-        extraKey: publish
-    - run: .github/scripts/setup.sh
+        jvm: 8
+        apps: sbt-launcher
     - uses: olafurpg/setup-gpg@v2
     - name: Release
       run: sbt ci-release
