@@ -18,10 +18,7 @@ jobs:
     name: Test (JDK ${{ matrix.JDK }}, Scala ${{ matrix.SCALA_VERSION }})
     steps:
     - uses: actions/checkout@v2
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\"]"
-        extraKey: ${{ matrix.JDK }}-${{ matrix.SCALA_VERSION }}
+    - uses: coursier/cache-action@v6
     - run: .github/scripts/setup.sh
       env:
         JDK: ${{ matrix.JDK }}
@@ -34,10 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\"]"
-        extraKey: fmt
+    - uses: coursier/cache-action@v6
     - run: .github/scripts/setup.sh
     - name: Check formatting
       run: scalafmt --test
@@ -48,10 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: coursier/cache-action@v5
-      with:
-        extraFiles: "[\".github/scripts/*.sh\", \".github/workflows/ci.yml\"]"
-        extraKey: publish
+    - uses: coursier/cache-action@v6
     - run: .github/scripts/setup.sh
     - uses: olafurpg/setup-gpg@v2
     - name: Release
