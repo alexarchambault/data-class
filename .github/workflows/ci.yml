@@ -19,7 +19,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: coursier/cache-action@v6
-    - run: .github/scripts/setup.sh
+    - uses: laughedelic/coursier-setup@v1
+      with:
+        jvm: 8
+        apps: sbt-launcher
       env:
         JDK: ${{ matrix.JDK }}
     - name: Compile
@@ -32,7 +35,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: coursier/cache-action@v6
-    - run: .github/scripts/setup.sh
+    - uses: laughedelic/coursier-setup@v1
+      with:
+        jvm: 8
+        apps: scalafmt
     - name: Check formatting
       run: scalafmt --test
 
@@ -43,7 +49,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - uses: coursier/cache-action@v6
-    - run: .github/scripts/setup.sh
+    - uses: laughedelic/coursier-setup@v1
+      with:
+        jvm: 8
+        apps: sbt-launcher
     - uses: olafurpg/setup-gpg@v2
     - name: Release
       run: sbt ci-release
