@@ -53,7 +53,7 @@ jobs:
       with:
         jvm: 8
         apps: sbt-launcher
-    - uses: olafurpg/setup-gpg@v2
+    - uses: olafurpg/setup-gpg@v3
     - name: Release
       run: sbt ci-release
       env:
