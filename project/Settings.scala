@@ -3,7 +3,7 @@ import sbt.Keys._
 
 object Settings {
 
-  def scala213 = "2.13.3"
+  def scala213 = "2.13.5"
   def scala212 = "2.12.13"
   def scala211 = "2.11.12"
 
