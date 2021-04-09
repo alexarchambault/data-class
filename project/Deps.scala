@@ -7,7 +7,7 @@ object Deps {
     Def.setting {
       "org.scala-lang" % "scala-reflect" % scalaVersion.value
     }
-  def shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
+  def shapeless = "com.chuusai" %% "shapeless" % "2.3.4"
   def utest =
     Def.setting {
       val sv = scalaVersion.value
