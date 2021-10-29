@@ -7,7 +7,9 @@ import scala.language.experimental.macros
 class data(
     apply: Boolean = true,
     publicConstructor: Boolean = true,
-    /** Whether to generate `withFoo(foo: Foo)` methods for fields like `foo: Option[Foo]`) */
+    /** Whether to generate `withFoo(foo: Foo)` methods for fields like `foo:
+      * Option[Foo]`)
+      */
     optionSetters: Boolean = false,
     /** Whether setters will call apply or new */
     settersCallApply: Boolean = false,
