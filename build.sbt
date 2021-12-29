@@ -47,7 +47,7 @@ lazy val `test-proj-v2` = project
     moduleName := "proj",
     version := "2.0",
     mimaPreviousArtifacts := Set(
-      organization.value %% moduleName.value % version.in(`test-proj-v1`).value
+      organization.value %% moduleName.value % (`test-proj-v1` / version).value
     )
   )
 
