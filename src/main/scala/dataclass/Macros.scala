@@ -290,7 +290,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               Seq(
                 q"""override def toString: _root_.java.lang.String = {
                     val b = new _root_.java.lang.StringBuilder(${tpname.decodedName
-                  .toString() + "("})
+                    .toString() + "("})
                     ..$fldLines
                     b.append(")")
                     b.toString()
@@ -398,8 +398,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               val a1 = a0 :: allParams0.tail
               atPos(newCtorPos)(q"""
                 $ctorMods def this(...$a1) = this(..${a
-                .map(p => q"${p.name}") ++ b
-                .map(_.rhs)})
+                  .map(p => q"${p.name}") ++ b
+                  .map(_.rhs)})
               """)
             }
           }
@@ -443,9 +443,10 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                 }
                 val a1 = a0 :: paramss.tail
                 q""" def apply[..$tparams](...$a1): $tpname[..$tparamsRef] = new $tpname[..$tparamsRef](...${(a
-                  .map(p => q"${p.name}") ++ b.map(_.rhs)) :: paramss.tail.map(
-                  _.map(p => q"${p.name}")
-                )})"""
+                    .map(p => q"${p.name}") ++ b.map(_.rhs)) :: paramss.tail
+                    .map(
+                      _.map(p => q"${p.name}")
+                    )})"""
               }
             else
               Nil
