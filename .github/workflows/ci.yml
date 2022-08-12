@@ -14,10 +14,10 @@ jobs:
       fail-fast: false
       matrix:
         JDK: ["8", "11"]
-        SCALA_VERSION: ["2.11.12", "2.12.13", "2.13.8"]
+        SCALA_VERSION: ["2.11.12", "2.12.16", "2.13.8"]
     name: Test (JDK ${{ matrix.JDK }}, Scala ${{ matrix.SCALA_VERSION }})
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
@@ -33,7 +33,7 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
@@ -47,7 +47,7 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: coursier/cache-action@v6
     - uses: laughedelic/coursier-setup@v1
       with:
