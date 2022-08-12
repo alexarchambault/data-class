@@ -14,28 +14,31 @@ jobs:
       fail-fast: false
       matrix:
         JDK: ["8", "11"]
-        SCALA_VERSION: ["2.11.12", "2.12.13", "2.13.6"]
+        SCALA_VERSION: ["2.11.12", "2.12.16", "2.13.8"]
     name: Test (JDK ${{ matrix.JDK }}, Scala ${{ matrix.SCALA_VERSION }})
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
-        apps: sbt-launcher
       env:
         JDK: ${{ matrix.JDK }}
     - name: Compile
-      run: sbt ++$SCALA_VERSION test test-proj-v1/publishLocal test-proj-v2/mimaReportBinaryIssues proj-v1-user/compile
+      run: |
+        sbtn ++$SCALA_VERSION test
+        sbtn ++$SCALA_VERSION test-proj-v1/publishLocal
+        sbtn ++$SCALA_VERSION test-proj-v2/mimaReportBinaryIssues
+        sbtn ++$SCALA_VERSION proj-v1-user/compile
       env:
         SCALA_VERSION: ${{ matrix.SCALA_VERSION }}
 
   fmt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
         apps: scalafmt
@@ -47,15 +50,14 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - uses: coursier/cache-action@v6
-    - uses: laughedelic/coursier-setup@v1
+    - uses: coursier/setup-action@v1.2.0
       with:
         jvm: 8
-        apps: sbt-launcher
     - uses: olafurpg/setup-gpg@v3
     - name: Release
-      run: sbt ci-release
+      run: sbtn ci-release
       env:
         PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         PGP_SECRET: ${{ secrets.PGP_SECRET }}
