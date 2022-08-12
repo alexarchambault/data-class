@@ -59,7 +59,7 @@ jobs:
     - name: Release
       run: sbtn ci-release
       env:
-        PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-        PGP_SECRET: ${{ secrets.PGP_SECRET }}
-        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+        PGP_SECRET: ${{ secrets.PUBLISH_SECRET_KEY }}
+        PGP_PASSPHRASE: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}
+        SONATYPE_USERNAME: ${{ secrets.PUBLISH_USER }}
+        SONATYPE_PASSWORD: ${{ secrets.PUBLISH_PASSWORD }}
