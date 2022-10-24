@@ -19,7 +19,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: coursier/cache-action@v6
-    - uses: coursier/setup-action@v1.2.1
+    - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
       env:
@@ -38,7 +38,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: coursier/cache-action@v6
-    - uses: coursier/setup-action@v1.2.1
+    - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
         apps: scalafmt
@@ -52,7 +52,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: coursier/cache-action@v6
-    - uses: coursier/setup-action@v1.2.1
+    - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
     - uses: olafurpg/setup-gpg@v3
