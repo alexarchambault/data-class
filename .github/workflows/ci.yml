@@ -22,6 +22,7 @@ jobs:
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
+        apps: sbt sbtn
       env:
         JDK: ${{ matrix.JDK }}
     - name: Compile
@@ -41,7 +42,7 @@ jobs:
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
-        apps: scalafmt
+        apps: sbt scalafmt
     - name: Check formatting
       run: scalafmt --test
 
@@ -55,6 +56,7 @@ jobs:
     - uses: coursier/setup-action@v1.3.0
       with:
         jvm: 8
+        apps: sbt sbtn
     - uses: olafurpg/setup-gpg@v3
     - name: Release
       run: sbtn ci-release
