@@ -33,65 +33,29 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             tq"${t.name}"
           }
 
-          val hasToString = {
+          def hasMethod(methodName: String): Boolean = {
             def fromStats =
               stats.exists {
                 case DefDef(_, nme, tparams, vparamss, _, _)
-                    if nme.decodedName.toString == "toString" && tparams.isEmpty && vparamss
+                    if nme.decodedName.toString == methodName && tparams.isEmpty && vparamss
                       .forall(_.isEmpty) =>
                   true
                 case t @ ValDef(_, name, _, _)
-                    if name.decodedName.toString == "toString" =>
+                    if name.decodedName.toString == methodName =>
                   true
                 case _ =>
                   false
               }
 
             val fromFields =
-              allParams.exists(_.name.decodedName.toString() == "toString")
+              allParams.exists(_.name.decodedName.toString() == methodName)
 
             fromFields || fromStats
           }
 
-          val hasHashCode = {
-            def fromStats =
-              stats.exists {
-                case DefDef(_, nme, tparams, vparamss, _, _)
-                    if nme.decodedName.toString == "hashCode" && tparams.isEmpty && vparamss
-                      .forall(_.isEmpty) =>
-                  true
-                case t @ ValDef(_, name, _, _)
-                    if name.decodedName.toString == "hashCode" =>
-                  true
-                case _ =>
-                  false
-              }
-
-            val fromFields =
-              allParams.exists(_.name.decodedName.toString() == "hashCode")
-
-            fromFields || fromStats
-          }
-
-          val hasTuple = {
-            def fromStats =
-              stats.exists {
-                case DefDef(_, nme, tparams, vparamss, _, _)
-                    if nme.decodedName.toString == "tuple" && tparams.isEmpty && vparamss
-                      .forall(_.isEmpty) =>
-                  true
-                case t @ ValDef(_, name, _, _)
-                    if name.decodedName.toString == "tuple" =>
-                  true
-                case _ =>
-                  false
-              }
-
-            val fromFields =
-              allParams.exists(_.name.decodedName.toString() == "tuple")
-
-            fromFields || fromStats
-          }
+          val hasToString = hasMethod("toString")
+          val hasHashCode = hasMethod("hashCode")
+          val hasTuple = hasMethod("tuple")
 
           val namedArgs = paramss.map(_.map { p =>
             q"${p.name}=this.${p.name}"
