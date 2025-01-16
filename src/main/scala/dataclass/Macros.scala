@@ -122,20 +122,24 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               tq"({type L[..$tparams0]=$WildcardType})#L"
           }
 
-          val equalMethods = {
-            val fldChecks = paramss.flatten
-              .map { param =>
-                q"this.${param.name} == other.${param.name}"
-              }
-              .foldLeft[Tree](q"true")((a, b) => q"$a && $b")
-
+          val canEqualMethod = {
             val hashCheck =
               if (cachedHashCode) q"obj.hashCode == hashCode" else q"true"
             Seq(
               q"""
                 override def canEqual(obj: Any): _root_.scala.Boolean =
                   obj != null && obj.isInstanceOf[$tpname[..$wildcardedTparams]] && $hashCheck
-               """,
+               """
+            )
+          }
+
+          val equalsMethod = {
+            val fldChecks = paramss.flatten
+              .map { param =>
+                q"this.${param.name} == other.${param.name}"
+              }
+              .foldLeft[Tree](q"true")((a, b) => q"$a && $b")
+            Seq(
               q"""
                 override def equals(obj: Any): _root_.scala.Boolean =
                   this.eq(obj.asInstanceOf[AnyRef]) || canEqual(obj) && {
@@ -384,7 +388,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               ..$stats
               ..$setters
               ..$toStringMethod
-              ..$equalMethods
+              ..$canEqualMethod
+              ..$equalsMethod
               ..$hashCodeMethod
               ..$tupleMethod
               ..$productMethods
