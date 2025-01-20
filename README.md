@@ -13,7 +13,7 @@ maintaining binary compatiblity.
 
 Add to your `build.sbt`,
 ```scala
-libraryDependencies += "io.github.alexarchambault" %% "data-class" % "0.2.1"
+libraryDependencies += "io.github.alexarchambault" %% "data-class" % "0.2.6"
 ```
 
 The latest version is [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault/data-class_2.13.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault/data-class_2.13).
@@ -181,3 +181,5 @@ binary compatible way
 - [stalagmite](https://gitlab.com/fommil/attic/tree/master/stalagmite) generates
 case classes with custom features via some macros (but doesn't aim at helping
 maintaining binary compatibility)
+- [`@unroll` support](https://github.com/scala/scala3/pull/21693) in Scala 3
+should help evolving methods and classes a binary-compatible way
