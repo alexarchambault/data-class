@@ -47,7 +47,6 @@ jobs:
       run: scalafmt --test
 
   publish:
-    needs: [test, fmt]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
