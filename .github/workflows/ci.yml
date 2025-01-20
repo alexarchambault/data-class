@@ -57,7 +57,10 @@ jobs:
       with:
         jvm: 8
         apps: sbt sbtn
-    - uses: olafurpg/setup-gpg@v3
+    - run: .github/scripts/gpg-setup.sh
+      shell: bash
+      env:
+        PGP_SECRET: ${{ secrets.PUBLISH_SECRET_KEY }}
     - name: Release
       run: sbtn ci-release
       env:
