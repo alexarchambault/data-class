@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        JDK: ["8", "11"]
+        JDK: ["8", "21"]
         SCALA_VERSION: ["2.12.20", "2.13.16"]
     name: Test (JDK ${{ matrix.JDK }}, Scala ${{ matrix.SCALA_VERSION }})
     steps:
