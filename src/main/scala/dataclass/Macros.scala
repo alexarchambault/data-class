@@ -33,65 +33,38 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             tq"${t.name}"
           }
 
-          val hasToString = {
+          def hasMethod(
+              methodName: String,
+              hasArgs: Boolean = false
+          ): Boolean = {
             def fromStats =
               stats.exists {
                 case DefDef(_, nme, tparams, vparamss, _, _)
-                    if nme.decodedName.toString == "toString" && tparams.isEmpty && vparamss
-                      .forall(_.isEmpty) =>
+                    if nme.decodedName.toString == methodName &&
+                      tparams.isEmpty &&
+                      (
+                        hasArgs && vparamss.map(_.length).sum == 1 ||
+                          vparamss.forall(_.isEmpty)
+                      ) =>
                   true
                 case t @ ValDef(_, name, _, _)
-                    if name.decodedName.toString == "toString" =>
+                    if !hasArgs && name.decodedName.toString == methodName =>
                   true
                 case _ =>
                   false
               }
 
-            val fromFields =
-              allParams.exists(_.name.decodedName.toString() == "toString")
+            val fromFields = !hasArgs &&
+              allParams.exists(_.name.decodedName.toString() == methodName)
 
             fromFields || fromStats
           }
 
-          val hasHashCode = {
-            def fromStats =
-              stats.exists {
-                case DefDef(_, nme, tparams, vparamss, _, _)
-                    if nme.decodedName.toString == "hashCode" && tparams.isEmpty && vparamss
-                      .forall(_.isEmpty) =>
-                  true
-                case t @ ValDef(_, name, _, _)
-                    if name.decodedName.toString == "hashCode" =>
-                  true
-                case _ =>
-                  false
-              }
-
-            val fromFields =
-              allParams.exists(_.name.decodedName.toString() == "hashCode")
-
-            fromFields || fromStats
-          }
-
-          val hasTuple = {
-            def fromStats =
-              stats.exists {
-                case DefDef(_, nme, tparams, vparamss, _, _)
-                    if nme.decodedName.toString == "tuple" && tparams.isEmpty && vparamss
-                      .forall(_.isEmpty) =>
-                  true
-                case t @ ValDef(_, name, _, _)
-                    if name.decodedName.toString == "tuple" =>
-                  true
-                case _ =>
-                  false
-              }
-
-            val fromFields =
-              allParams.exists(_.name.decodedName.toString() == "tuple")
-
-            fromFields || fromStats
-          }
+          val hasToString = hasMethod("toString")
+          val hasHashCode = hasMethod("hashCode")
+          val hasTuple = hasMethod("tuple")
+          val hasCanEqual = hasMethod("canEqual", hasArgs = true)
+          val hasEquals = hasMethod("equals", hasArgs = true)
 
           val namedArgs = paramss.map(_.map { p =>
             q"${p.name}=this.${p.name}"
@@ -158,29 +131,37 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               tq"({type L[..$tparams0]=$WildcardType})#L"
           }
 
-          val equalMethods = {
-            val fldChecks = paramss.flatten
-              .map { param =>
-                q"this.${param.name} == other.${param.name}"
-              }
-              .foldLeft[Tree](q"true")((a, b) => q"$a && $b")
+          val canEqualMethod =
+            if (hasCanEqual) Nil
+            else {
+              val hashCheck =
+                if (cachedHashCode) q"obj.hashCode == hashCode" else q"true"
+              Seq(
+                q"""
+                  override def canEqual(obj: Any): _root_.scala.Boolean =
+                    obj != null && obj.isInstanceOf[$tpname[..$wildcardedTparams]] && $hashCheck
+                 """
+              )
+            }
 
-            val hashCheck =
-              if (cachedHashCode) q"obj.hashCode == hashCode" else q"true"
-            Seq(
-              q"""
-                override def canEqual(obj: Any): _root_.scala.Boolean =
-                  obj != null && obj.isInstanceOf[$tpname[..$wildcardedTparams]] && $hashCheck
-               """,
-              q"""
-                override def equals(obj: Any): _root_.scala.Boolean =
-                  this.eq(obj.asInstanceOf[AnyRef]) || canEqual(obj) && {
-                    val other = obj.asInstanceOf[$tpname[..$wildcardedTparams]]
-                    $fldChecks
-                  }
-               """
-            )
-          }
+          val equalsMethod =
+            if (hasEquals) Nil
+            else {
+              val fldChecks = paramss.flatten
+                .map { param =>
+                  q"this.${param.name} == other.${param.name}"
+                }
+                .foldLeft[Tree](q"true")((a, b) => q"$a && $b")
+              Seq(
+                q"""
+                  override def equals(obj: Any): _root_.scala.Boolean =
+                    this.eq(obj.asInstanceOf[AnyRef]) || canEqual(obj) && {
+                      val other = obj.asInstanceOf[$tpname[..$wildcardedTparams]]
+                      $fldChecks
+                    }
+                 """
+              )
+            }
 
           val hashCodeMethod =
             if (hasHashCode) Nil
@@ -420,7 +401,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               ..$stats
               ..$setters
               ..$toStringMethod
-              ..$equalMethods
+              ..$canEqualMethod
+              ..$equalsMethod
               ..$hashCodeMethod
               ..$tupleMethod
               ..$productMethods

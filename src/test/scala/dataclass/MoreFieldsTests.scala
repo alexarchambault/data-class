@@ -259,6 +259,79 @@ object MoreFieldsTests extends TestSuite {
       }
     }
 
+    "has equals" - {
+      "def" - {
+        @data class Foo(password: String) {
+          override def equals(obj: Any): Boolean =
+            obj.isInstanceOf[Foo] && (
+              password == obj.asInstanceOf[Foo].password ||
+                obj.asInstanceOf[Foo].password == "special"
+            )
+        }
+
+        val foo = Foo("aa")
+        val other = Foo("bb")
+        val specialFoo = Foo("special")
+        val equalsCopy = foo == foo.withPassword("aa")
+        assert(equalsCopy)
+        val equalsOther = foo == other
+        assert(!equalsOther)
+        val equalsSpecial = foo == specialFoo
+        assert(equalsSpecial)
+      }
+
+      "two-arg" - {
+        @data class Foo(password: String) {
+          def equals(obj: Any, thing: Any): Boolean =
+            true
+        }
+
+        val foo = Foo("aa")
+        val other = Foo("bb")
+        val specialFoo = Foo("special")
+        val equalsCopy = foo == foo.withPassword("aa")
+        assert(equalsCopy)
+        val equalsOther = foo == other
+        assert(!equalsOther)
+        val equalsSpecial = foo == specialFoo
+        assert(!equalsSpecial)
+      }
+    }
+
+    "has canEqual" - {
+      "def" - {
+        @data class Foo(password: String) {
+          override def canEqual(obj: Any): Boolean =
+            obj.isInstanceOf[Foo] || obj.toString == "Foo"
+        }
+
+        val foo = Foo("aa")
+        val other = Foo("bb")
+        val canEqualOther = foo.canEqual(other)
+        assert(canEqualOther)
+        val canEqualRandomString = foo.canEqual("thing")
+        assert(!canEqualRandomString)
+        val canEqualSpecialString = foo.canEqual("Foo")
+        assert(canEqualSpecialString)
+      }
+
+      "two-arg" - {
+        @data class Foo(password: String) {
+          def canEqual(obj: Any, thing: Any): Boolean =
+            obj.isInstanceOf[Foo] || obj.toString == "Foo"
+        }
+
+        val foo = Foo("aa")
+        val other = Foo("bb")
+        val canEqualOther = foo.canEqual(other)
+        assert(canEqualOther)
+        val canEqualRandomString = foo.canEqual("thing")
+        assert(!canEqualRandomString)
+        val canEqualSpecialString = foo.canEqual("Foo")
+        assert(!canEqualSpecialString)
+      }
+    }
+
     "override val with default" - {
       class Repository {
         def versionsCheckHasModule: Boolean = false
