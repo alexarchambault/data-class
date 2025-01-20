@@ -24,7 +24,7 @@ lazy val `data-class` = project
     libraryDependencies ++= Seq(
       Deps.scalaReflect.value,
       Deps.shapeless % Test,
-      Deps.utest.value % Test
+      Deps.utest % Test
     ),
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
