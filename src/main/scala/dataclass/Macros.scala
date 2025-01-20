@@ -501,7 +501,7 @@ object Macros {
   // productElementName added in 2.13
   private[dataclass] val productElemNameAvailable = {
     val sv = scala.util.Properties.versionNumberString
-    !sv.startsWith("2.11.") && !sv.startsWith("2.12.")
+    !sv.startsWith("2.12.")
   }
 
 }
