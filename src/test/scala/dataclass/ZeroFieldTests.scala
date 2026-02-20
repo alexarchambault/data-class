@@ -9,29 +9,29 @@ import scala.concurrent.Future
 object ZeroFieldTests extends TestSuite {
   val tests = Tests {
     @data class Foo()
-    "equals" - {
+    test("equals") {
       val foo = Foo()
       val foo2 = Foo()
       assert(foo == foo2)
     }
-    "toString" - {
+    test("toString") {
       val foo = Foo()
       val str = foo.toString
       val expected = "Foo()"
       assert(str == expected)
     }
-    "tuple" - {
+    test("tuple") {
       @data class Foo0() {
         def tuple0 = tuple
       }
 
-      * - {
+      test {
         val foo = Foo0()
         val t = foo.tuple0
         assert(t.getClass == classOf[Unit])
       }
 
-      "actually private" - {
+      test("actually private") {
         val foo = Foo0()
         illTyped(
           """
@@ -42,8 +42,8 @@ object ZeroFieldTests extends TestSuite {
       }
     }
 
-    "type params" - {
-      "one" - {
+    test("type params") {
+      test("one") {
         @data class Bar[T]()
         val barI = Bar[Int]()
         val barS = Bar[String]()
@@ -51,7 +51,7 @@ object ZeroFieldTests extends TestSuite {
         assert(barI == barS)
       }
 
-      "two" - {
+      test("two") {
         @data class Bar[T, U]()
         val barI = Bar[Int, Double]()
         val barS = Bar[String, Long]()
@@ -59,7 +59,7 @@ object ZeroFieldTests extends TestSuite {
         assert(barI == barS)
       }
 
-      "three" - {
+      test("three") {
         @data class Bar[T, U, V]()
         val barI = Bar[Int, Double, Int]()
         val barS = Bar[String, Long, Long]()
@@ -67,7 +67,7 @@ object ZeroFieldTests extends TestSuite {
         assert(barI == barS)
       }
 
-      "higher kind" - {
+      test("higher kind") {
         @data class Bar[F[_]]()
         val barF = Bar[Future]()
         val barL = Bar[List]()
@@ -76,11 +76,11 @@ object ZeroFieldTests extends TestSuite {
       }
     }
 
-    "class constructor" - {
-      "public" - {
+    test("class constructor") {
+      test("public") {
         val foo = new Foo()
       }
-      "private" - {
+      test("private") {
         @data class Bar private ()
         val bar = Bar()
         illTyped(
@@ -92,17 +92,17 @@ object ZeroFieldTests extends TestSuite {
       }
     }
 
-    "shapeless" - {
+    test("shapeless") {
       @data class Bar()
-      import shapeless._
-      * - {
+      import shapeless.{test => _, _}
+      test {
         val gen = Generic[Bar]
         val bar: Bar = gen.from(HNil)
         val l: HNil = gen.to(Bar())
       }
     }
 
-    "product" - {
+    test("product") {
       val foo = Foo()
       val arity = foo.productArity
       val elements = foo.productIterator.toVector
@@ -143,14 +143,14 @@ object ZeroFieldTests extends TestSuite {
       }
     }
 
-    "productPrefix" - {
+    test("productPrefix") {
       val foo = Foo()
       val prefix = foo.productPrefix
       val expectedPrefix = "Foo"
       assert(prefix == expectedPrefix)
     }
 
-    "serializable" - {
+    test("serializable") {
       val foo = Foo()
       assert(foo.isInstanceOf[Serializable])
     }

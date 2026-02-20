@@ -9,13 +9,13 @@ import scala.concurrent.Future
 object TwoFieldsTests extends TestSuite {
   val tests = Tests {
     @data class Foo(a: Int, other: String)
-    "equals" - {
-      * - {
+    test("equals") {
+      test {
         val foo = Foo(1, "a")
         val foo2 = Foo(1, "a")
         assert(foo == foo2)
       }
-      * - {
+      test {
         val foo = Foo(1, "a")
         val foo2 = Foo(3, "a")
         val foo3 = Foo(1, "b")
@@ -24,18 +24,18 @@ object TwoFieldsTests extends TestSuite {
         assert(foo2 != foo3)
       }
     }
-    "toString" - {
+    test("toString") {
       val foo = Foo(1, "o")
       val str = foo.toString
       val expected = "Foo(1, o)"
       assert(str == expected)
     }
-    "class constructor" - {
-      "public" - {
+    test("class constructor") {
+      test("public") {
         // Would have preferred it to be public by default
         val foo = new Foo(3, "a")
       }
-      "private" - {
+      test("private") {
         @data class Bar private (n: Int, s: String)
         val bar = Bar(4, "b")
         illTyped(
@@ -46,12 +46,12 @@ object TwoFieldsTests extends TestSuite {
         )
       }
     }
-    "accessors" - {
+    test("accessors") {
       val foo = Foo(2, "c")
       assert(foo.a == 2)
       assert(foo.other == "c")
     }
-    "setters" - {
+    test("setters") {
       val foo = Foo(1, "s")
       val foo2 = foo.withA(2)
       val foo3 = foo.withOther("t")
@@ -65,7 +65,7 @@ object TwoFieldsTests extends TestSuite {
       assert(foo4.a == 2)
       assert(foo4.other == "u")
     }
-    "option setters" - {
+    test("option setters") {
       @data(optionSetters = true) class Bar(
           a: Int,
           other: Option[String] = None
@@ -87,7 +87,7 @@ object TwoFieldsTests extends TestSuite {
       assert(bar5.other == None)
     }
 
-    "tuple" - {
+    test("tuple") {
       @data class Foo0(a: Int, other: String) {
         def tuple0 = tuple
       }
@@ -96,7 +96,7 @@ object TwoFieldsTests extends TestSuite {
       assert(t == (1, "a"))
     }
 
-    "private field" - {
+    test("private field") {
       @data class Bar(private val n: Int, s: String)
       val bar = Bar(2, "a")
       illTyped(
@@ -108,10 +108,10 @@ object TwoFieldsTests extends TestSuite {
       assert(bar.s == "a")
     }
 
-    "shapeless" - {
+    test("shapeless") {
       @data class Bar(n: Int, s: String)
-      import shapeless._
-      * - {
+      import shapeless.{test => _, _}
+      test {
         val gen = Generic[Bar]
         val bar: Bar = gen.from(2 :: "a" :: HNil)
         val l: Int :: String :: HNil = gen.to(Bar(3, "b"))
@@ -121,7 +121,7 @@ object TwoFieldsTests extends TestSuite {
       }
     }
 
-    "product" - {
+    test("product") {
       val foo = Foo(2, "a")
       val arity = foo.productArity
       val elements = foo.productIterator.toVector
@@ -163,16 +163,16 @@ object TwoFieldsTests extends TestSuite {
       }
     }
 
-    "productPrefix" - {
+    test("productPrefix") {
       val foo = Foo(1, "c")
       val prefix = foo.productPrefix
       val expectedPrefix = "Foo"
       assert(prefix == expectedPrefix)
     }
 
-    "type params" - {
-      "one" - {
-        "used" - {
+    test("type params") {
+      test("one") {
+        test("used") {
           @data class Bar[T](t: T, n: Double)
           val barI = Bar[Int](2, 1.0)
           val barI2 = Bar[Int](3, 1.2)
@@ -183,7 +183,7 @@ object TwoFieldsTests extends TestSuite {
           assert(barI == barI3)
         }
 
-        "unused" - {
+        test("unused") {
           @data class Bar[T](n: Int, s: String)
           val barI = Bar[Int](2, "a")
           val barI2 = Bar[Int](3, "b")
@@ -197,7 +197,7 @@ object TwoFieldsTests extends TestSuite {
           assert(barI == barS2)
         }
 
-        "setters" - {
+        test("setters") {
           @data class Bar[T](n: Int, s: String)
           val barI: Bar[Int] = Bar[Int](2, "a")
           val barNewN: Bar[Int] = barI.withN(3)
@@ -206,22 +206,22 @@ object TwoFieldsTests extends TestSuite {
 
       }
 
-      "two" - {
+      test("two") {
         @data class Bar[T, U](t: T, u: U)
         val barI = Bar[Int, Double](1, 1.0)
         val barS = Bar[String, Long]("a", 2L)
         assert(barI != barS)
       }
 
-      "three" - {
+      test("three") {
         @data class Bar[T, U, V](u: U, v: V)
         val barI = Bar[Int, Double, Int](1.1, 2)
         val barS = Bar[String, Long, Long](1L, 3L)
         assert(barI != barS)
       }
 
-      "higher kind" - {
-        "one" - {
+      test("higher kind") {
+        test("one") {
           @data class Bar[F[_]](f1: F[Int], f2: F[String])
           val barF = Bar[Future](
             Future.successful(2),
@@ -231,7 +231,7 @@ object TwoFieldsTests extends TestSuite {
           assert(barF != barL)
         }
 
-        "two" - {
+        test("two") {
           @data class Bar[F[_], G[_]](f: F[Int], g: G[String])
           val barF = Bar[Future, Vector](Future.successful(2), Vector("a", "b"))
           val barL = Bar[List, Future](List(3), Future.successful("s"))
@@ -240,15 +240,15 @@ object TwoFieldsTests extends TestSuite {
       }
     }
 
-    "multiple parameter groups" - {
-      * - {
+    test("multiple parameter groups") {
+      test {
         @data class Bar(n: Int)(implicit s: String)
         val bar = Bar(2)("a")
         val bar0 = Bar(1)("a")
         assert(bar != bar0)
       }
 
-      * - {
+      test {
         class TC[T]
         object TC {
           implicit val int = new TC[Int]
