@@ -4,7 +4,7 @@ import sbt.Keys._
 object Settings {
 
   def scala213 = "2.13.16"
-  def scala212 = "2.12.20"
+  def scala212 = "2.12.21"
 
   private lazy val isScala212 = Def.setting {
     scalaVersion.value.startsWith("2.12.")
