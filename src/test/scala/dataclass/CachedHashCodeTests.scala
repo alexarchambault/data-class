@@ -4,7 +4,7 @@ import utest._
 
 object CachedHashCodeTests extends TestSuite {
   val tests = Tests {
-    "cached hashCode should work" - {
+    test("cached hashCode should work") {
       class HashCodeCount(value: Int) {
         var hashCodeCount = 0
         override def hashCode(): Int = {
