@@ -6,7 +6,7 @@ import utest._
 
 object MoreFieldsTests extends TestSuite {
   val tests = Tests {
-    "tuple" - {
+    test("tuple") {
       @data class Bar(
           n: Int,
           s: String,
@@ -20,7 +20,7 @@ object MoreFieldsTests extends TestSuite {
       assert(t == (1, "a", false, 1.2))
     }
 
-    "option setters" - {
+    test("option setters") {
       @data(optionSetters = true) class Bar(
           n: Int,
           s: String,
@@ -37,8 +37,8 @@ object MoreFieldsTests extends TestSuite {
       assert(foo4.b == None)
     }
 
-    "since annotation" - {
-      * - {
+    test("since annotation") {
+      test {
         illTyped(
           """
             @data class Bar(n: Int, s: String, @since("") b: Boolean)
@@ -52,7 +52,7 @@ object MoreFieldsTests extends TestSuite {
           "Found parameter with no default value d after @since annotation"
         )
       }
-      * - {
+      test {
         @data class Bar(
             n: Int,
             s: String,
@@ -75,7 +75,7 @@ object MoreFieldsTests extends TestSuite {
       }
     }
 
-    "shapeless" - {
+    test("shapeless") {
       @data class Bar(n: Int, s: String, d: Double)
       @data class Baz(
           n: Int,
@@ -84,8 +84,8 @@ object MoreFieldsTests extends TestSuite {
           b: Boolean = false
       )
 
-      import shapeless._
-      "simple" - {
+      import shapeless.{test => _, _}
+      test("simple") {
         val gen = Generic[Bar]
         val bar: Bar = gen.from(2 :: "a" :: 1.0 :: HNil)
         val l: Int :: String :: Double :: HNil = gen.to(Bar(3, "b", 1.2))
@@ -95,7 +95,7 @@ object MoreFieldsTests extends TestSuite {
         assert(l == 3 :: "b" :: 1.2 :: HNil)
       }
 
-      "with since" - {
+      test("with since") {
         val gen = Generic[Baz]
         val baz: Baz = gen.from(2 :: "a" :: 1.0 :: true :: HNil)
         val l: Int :: String :: Double :: Boolean :: HNil =
@@ -108,7 +108,7 @@ object MoreFieldsTests extends TestSuite {
       }
     }
 
-    "product" - {
+    test("product") {
       @data class Foo(
           n: Int,
           s: String,
@@ -157,7 +157,7 @@ object MoreFieldsTests extends TestSuite {
       }
     }
 
-    "productPrefix" - {
+    test("productPrefix") {
       @data class Foo(
           n: Int,
           s: String,
@@ -171,8 +171,8 @@ object MoreFieldsTests extends TestSuite {
       assert(prefix == expectedPrefix)
     }
 
-    "has toString" - {
-      "def" - {
+    test("has toString") {
+      test("def") {
         @data class Foo(password: String) {
           override def toString: String = "Foo(****)"
         }
@@ -183,7 +183,7 @@ object MoreFieldsTests extends TestSuite {
         assert(str == expected)
       }
 
-      "val" - {
+      test("val") {
         @data class Foo(password: String) {
           override val toString = "Foo(****)"
         }
@@ -194,7 +194,7 @@ object MoreFieldsTests extends TestSuite {
         assert(str == expected)
       }
 
-      "lazy val" - {
+      test("lazy val") {
         @data class Foo(password: String) {
           override lazy val toString = "Foo(****)"
         }
@@ -205,7 +205,7 @@ object MoreFieldsTests extends TestSuite {
         assert(str == expected)
       }
 
-      "field" - {
+      test("field") {
         @data class Foo(password: String, override val toString: String)
 
         val f = Foo("aa", "123")
@@ -215,8 +215,8 @@ object MoreFieldsTests extends TestSuite {
       }
     }
 
-    "has hashCode" - {
-      "def" - {
+    test("has hashCode") {
+      test("def") {
         @data class Foo(password: String) {
           override def hashCode: Int = 34
         }
@@ -227,7 +227,7 @@ object MoreFieldsTests extends TestSuite {
         assert(code == expected)
       }
 
-      "val" - {
+      test("val") {
         @data class Foo(password: String) {
           override val hashCode = 34
         }
@@ -238,7 +238,7 @@ object MoreFieldsTests extends TestSuite {
         assert(code == expected)
       }
 
-      "lazy val" - {
+      test("lazy val") {
         @data class Foo(password: String) {
           override lazy val hashCode = 34
         }
@@ -249,7 +249,7 @@ object MoreFieldsTests extends TestSuite {
         assert(code == expected)
       }
 
-      "hashCode" - {
+      test("hashCode") {
         @data class Foo(password: String, override val hashCode: Int)
 
         val f = Foo("aa", 56)
@@ -259,8 +259,8 @@ object MoreFieldsTests extends TestSuite {
       }
     }
 
-    "has equals" - {
-      "def" - {
+    test("has equals") {
+      test("def") {
         @data class Foo(password: String) {
           override def equals(obj: Any): Boolean =
             obj.isInstanceOf[Foo] && (
@@ -280,7 +280,7 @@ object MoreFieldsTests extends TestSuite {
         assert(equalsSpecial)
       }
 
-      "two-arg" - {
+      test("two-arg") {
         @data class Foo(password: String) {
           def equals(obj: Any, thing: Any): Boolean =
             true
@@ -298,8 +298,8 @@ object MoreFieldsTests extends TestSuite {
       }
     }
 
-    "has canEqual" - {
-      "def" - {
+    test("has canEqual") {
+      test("def") {
         @data class Foo(password: String) {
           override def canEqual(obj: Any): Boolean =
             obj.isInstanceOf[Foo] || obj.toString == "Foo"
@@ -315,7 +315,7 @@ object MoreFieldsTests extends TestSuite {
         assert(canEqualSpecialString)
       }
 
-      "two-arg" - {
+      test("two-arg") {
         @data class Foo(password: String) {
           def canEqual(obj: Any, thing: Any): Boolean =
             obj.isInstanceOf[Foo] || obj.toString == "Foo"
@@ -332,7 +332,7 @@ object MoreFieldsTests extends TestSuite {
       }
     }
 
-    "override val with default" - {
+    test("override val with default") {
       class Repository {
         def versionsCheckHasModule: Boolean = false
       }
