@@ -14,10 +14,10 @@ jobs:
       fail-fast: false
       matrix:
         JDK: ["8", "21"]
-        SCALA_VERSION: ["2.12.20", "2.13.16"]
+        SCALA_VERSION: ["2.12.21", "2.13.16"]
     name: Test (JDK ${{ matrix.JDK }}, Scala ${{ matrix.SCALA_VERSION }})
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: coursier/cache-action@v6
     - uses: coursier/setup-action@v1.3.9
       with:
@@ -37,7 +37,7 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: coursier/cache-action@v6
     - uses: coursier/setup-action@v1.3.9
       with:
@@ -47,17 +47,19 @@ jobs:
       run: scalafmt --test
 
   publish:
-    needs: [test, fmt]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: coursier/cache-action@v6
     - uses: coursier/setup-action@v1.3.9
       with:
         jvm: 8
         apps: sbt sbtn
-    - uses: olafurpg/setup-gpg@v3
+    - run: .github/scripts/gpg-setup.sh
+      shell: bash
+      env:
+        PGP_SECRET: ${{ secrets.PUBLISH_SECRET_KEY }}
     - name: Release
       run: sbtn ci-release
       env:
