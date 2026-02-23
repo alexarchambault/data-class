@@ -19,7 +19,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: coursier/cache-action@v8
-    - uses: coursier/setup-action@v1.3.9
+    - uses: coursier/setup-action@v2.0.3
       with:
         jvm: 8
         apps: sbt sbtn
@@ -39,7 +39,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: coursier/cache-action@v8
-    - uses: coursier/setup-action@v1.3.9
+    - uses: coursier/setup-action@v2.0.3
       with:
         jvm: 8
         apps: sbt scalafmt
@@ -52,7 +52,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: coursier/cache-action@v8
-    - uses: coursier/setup-action@v1.3.9
+    - uses: coursier/setup-action@v2.0.3
       with:
         jvm: 8
         apps: sbt sbtn
