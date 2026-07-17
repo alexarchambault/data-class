@@ -1,4 +1,6 @@
 //| mill-version: 1.1.7
+//| mvnDeps:
+//|   - com.github.lolgab:mill-mima_mill1_3:0.2.2
 
 package build
 
@@ -7,12 +9,23 @@ import mill.api.BuildCtx
 import mill.scalalib.*
 import mill.scalalib.publish.*
 import mill.util.VcsVersionModule
+import com.github.lolgab.mill.mima.Mima
+import coursier.version.Version
 
 val scalaVersions = Seq("2.12.21", "2.13.18")
 
+private def releaseVersions =
+  os.proc("git", "tag", "--list", "v*")
+    .call(cwd = BuildCtx.workspaceRoot)
+    .out
+    .lines()
+    .collect {
+      case tag if tag.matches("v[0-9]+\\.[0-9]+\\.[0-9]+") => tag.stripPrefix("v")
+    }
+
 object dataClass extends Cross[DataClassModule](scalaVersions)
 
-trait DataClassModule extends CrossScalaModule, PublishModule, VcsVersionModule {
+trait DataClassModule extends CrossScalaModule, PublishModule, VcsVersionModule, Mima {
   def sources = Task.Sources(BuildCtx.workspaceRoot / "src/main/scala")
 
   def scalacOptions = Seq("-target:jvm-1.8", "-deprecation") ++
@@ -26,6 +39,12 @@ trait DataClassModule extends CrossScalaModule, PublishModule, VcsVersionModule 
     else Seq.empty
 
   def artifactName = "data-class"
+  def mimaPreviousVersions = {
+    val firstCompatibleVersion =
+      if (crossValue.startsWith("3.")) Version("0.3.0")
+      else Version("0.2.5")
+    releaseVersions.filter(version => Version(version).compare(firstCompatibleVersion) >= 0)
+  }
 
   def pomSettings = PomSettings(
     description = "Classes almost like case classes, designed for binary-compatible evolution",

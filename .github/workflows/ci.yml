@@ -28,6 +28,15 @@ jobs:
       env:
         SCALA_VERSION: ${{ matrix.SCALA_VERSION }}
 
+  mima:
+    runs-on: ubuntu-latest
+    name: Binary compatibility
+    steps:
+    - uses: actions/checkout@v7
+    - uses: coursier/cache-action@v8
+    - name: Check binary compatibility
+      run: ./mill __.mimaReportBinaryIssues
+
   fmt:
     runs-on: ubuntu-latest
     steps:

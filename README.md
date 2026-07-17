@@ -27,6 +27,12 @@ The build uses Mill via the checked-in launcher. Run all tests with:
 ./mill dataClass.2_13_18.test.testForked
 ```
 
+Check binary compatibility against applicable versions discovered from release tags with:
+
+```text
+./mill __.mimaReportBinaryIssues
+```
+
 The macro paradise plugin is needed up to scala 2.12, and the right
 compiler option needs to be used from 2.13 onwards:
 ```scala
