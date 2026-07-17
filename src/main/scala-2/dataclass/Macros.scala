@@ -280,6 +280,13 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               )
             }
 
+          def isSinceAnnotation(annotation: Tree): Boolean = {
+            val rendered = annotation.toString()
+            Option(annotation.tpe).exists(
+              _.typeSymbol.fullName == "dataclass.since"
+            ) || rendered.startsWith("new since(") || rendered.startsWith("new unroll(")
+          }
+
           val splits = {
 
             @tailrec
@@ -305,7 +312,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               paramss.head.zipWithIndex
                 .filter(
                   _._1.mods.annotations
-                    .exists(_.toString().startsWith("new since("))
+                    .exists(isSinceAnnotation)
                 )
                 .map(_._2)
 
@@ -332,13 +339,13 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               q"$mods0 val ${p.name}: ${p.tpt}"
             }
             val hasSince =
-              p0.mods.annotations.exists(_.toString().startsWith("new since("))
+              p0.mods.annotations.exists(isSinceAnnotation)
             if (hasSince) {
               val mods0 = Modifiers(
                 p0.mods.flags,
                 p0.mods.privateWithin,
                 p0.mods.annotations
-                  .filter(!_.toString().startsWith("new since("))
+                  .filter(!isSinceAnnotation(_))
               )
               q"$mods0 val ${p0.name}: ${p0.tpt}"
             } else

@@ -12,7 +12,8 @@ import mill.util.VcsVersionModule
 import com.github.lolgab.mill.mima.Mima
 import coursier.version.Version
 
-val scalaVersions = Seq("2.12.21", "2.13.18")
+val scala2Versions = Seq("2.12.21", "2.13.18")
+val scalaVersions = scala2Versions :+ "3.8.2"
 
 private def releaseVersions =
   os.proc("git", "tag", "--list", "v*")
@@ -26,12 +27,20 @@ private def releaseVersions =
 object dataClass extends Cross[DataClassModule](scalaVersions)
 
 trait DataClassModule extends CrossScalaModule, PublishModule, VcsVersionModule, Mima {
-  def sources = Task.Sources(BuildCtx.workspaceRoot / "src/main/scala")
+  def sources = Task.Sources(
+    BuildCtx.workspaceRoot / "src" / "main" /
+      (if (crossValue.startsWith("3.")) "scala-3" else "scala-2")
+  )
 
-  def scalacOptions = Seq("-target:jvm-1.8", "-deprecation") ++
-    (if (scalaVersion().startsWith("2.13.")) Seq("-Ymacro-annotations") else Seq.empty)
+  def scalacOptions =
+    (if (scalaVersion().startsWith("3.")) Seq("-release:17", "-experimental")
+     else Seq("-target:jvm-1.8")) ++
+      Seq("-deprecation") ++
+      (if (scalaVersion().startsWith("2.13.")) Seq("-Ymacro-annotations") else Seq.empty)
 
-  def mvnDeps = Seq(mvn"org.scala-lang:scala-reflect:${scalaVersion()}")
+  def mvnDeps =
+    if (crossValue.startsWith("3.")) Seq.empty
+    else Seq(mvn"org.scala-lang:scala-reflect:${scalaVersion()}")
 
   def scalacPluginMvnDeps =
     if (crossValue.startsWith("2.12."))
@@ -62,11 +71,17 @@ trait DataClassModule extends CrossScalaModule, PublishModule, VcsVersionModule,
   )
 
   object test extends ScalaTests {
-    def sources = Task.Sources(BuildCtx.workspaceRoot / "src/test/scala")
-    def mvnDeps = Seq(
-      mvn"com.chuusai::shapeless:2.3.13",
-      mvn"com.lihaoyi::utest:0.9.5"
-    )
+    def sources =
+      if (crossValue.startsWith("3.")) Task.Sources()
+      else Task.Sources(BuildCtx.workspaceRoot / "src/test/scala")
+    def mvnDeps =
+      if (crossValue.startsWith("3."))
+        Seq(mvn"com.lihaoyi::utest:0.9.5")
+      else
+        Seq(
+          mvn"com.chuusai::shapeless:2.3.13",
+          mvn"com.lihaoyi::utest:0.9.5"
+        )
     def testFramework = "utest.runner.Framework"
   }
 }
@@ -78,19 +93,34 @@ object test extends Module {
     def scalacPluginMvnDeps = dataClass().scalacPluginMvnDeps
   }
 
-  object testProjV1 extends Cross[TestProjV1Module](scalaVersions)
+  object testProjV1 extends Cross[TestProjV1Module](scala2Versions)
   trait TestProjV1Module extends SmokeTestModule {
     def sources = Task.Sources("proj-v1/src/main/scala")
   }
 
-  object testProjV2 extends Cross[TestProjV2Module](scalaVersions)
+  object testProjV2 extends Cross[TestProjV2Module](scala2Versions)
   trait TestProjV2Module extends SmokeTestModule {
     def sources = Task.Sources("proj-v2/src/main/scala")
   }
 
-  object userProjV1 extends Cross[UserProjV1Module](scalaVersions)
+  object userProjV1 extends Cross[UserProjV1Module](scala2Versions)
   trait UserProjV1Module extends CrossScalaModule {
     def moduleDeps = Seq(testProjV1())
     def sources = Task.Sources("user-proj-v1/src/main/scala")
+  }
+
+  object compat extends Cross[CompatModule](scalaVersions)
+  trait CompatModule extends CrossScalaModule {
+    def moduleDeps = Seq(dataClass())
+    def sources = Task.Sources()
+    def scalacOptions = dataClass().scalacOptions()
+    def scalacPluginMvnDeps = dataClass().scalacPluginMvnDeps()
+    object test extends ScalaTests {
+      def sources = Task.Sources(
+        BuildCtx.workspaceRoot / "test/compat/src/test/scala"
+      )
+      def mvnDeps = Seq(mvn"com.lihaoyi::utest:0.9.5")
+      def testFramework = "utest.runner.Framework"
+    }
   }
 }
