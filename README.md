@@ -18,6 +18,21 @@ libraryDependencies += "io.github.alexarchambault" %% "data-class" % "0.2.6"
 
 The latest version is [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault/data-class_2.13.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault/data-class_2.13).
 
+## Development
+
+The build uses Mill via the checked-in launcher. Run all tests with:
+
+```text
+./mill dataClass.2_12_21.test.testForked
+./mill dataClass.2_13_18.test.testForked
+```
+
+Check binary compatibility against applicable versions discovered from release tags with:
+
+```text
+./mill __.mimaReportBinaryIssues
+```
+
 The macro paradise plugin is needed up to scala 2.12, and the right
 compiler option needs to be used from 2.13 onwards:
 ```scala
