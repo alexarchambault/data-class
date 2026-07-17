@@ -3,9 +3,9 @@
 [![Build Status](https://travis-ci.org/alexarchambault/data-class.svg?branch=master)](https://travis-ci.org/alexarchambault/data-class)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault/data-class_2.13.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault/data-class_2.13)
 
-*data-class* allows to create classes almost like case-classes, but with no
-public `unapply` or `copy` methods, making it easier to add fields to them while
-maintaining binary compatiblity.
+*data-class* allows to create classes almost like case-classes, with no public
+`unapply` method and with binary-compatible `copy` overloads, making it easier
+to add fields while maintaining binary compatibility.
 
 ## Usage
 
@@ -66,6 +66,7 @@ This annotation adds a number of features, that can also be found in
 case classes:
 - sensible `equals` / `hashCode` / `toString` implementations,
 - `apply` methods in the companion object for easier creation,
+- public `copy` methods corresponding to the generated constructors,
 - extend the `scala.Product` trait (itself extending `scala.Equal`), and
 implement its methods,
 - extend the `scala.Serializable` trait.
@@ -76,12 +77,14 @@ It also adds things that differ from case classes:
 generates a method `withCount(count: Int)` returning a new instance of the
 class with `count` updated).
 
-Most notably, it does _not_ generate `copy` or `unapply` methods, making
-binary compatibility much more tractable upon adding new fields (see below).
+Most notably, it does not generate an `unapply` method. Its `copy` methods have
+the same binary-compatible overloads as its constructors (see below).
 
 In the example above, the `@data` macro generates code like the following (modulo macro hygiene):
 ```scala
 final class Foo(val n: Int, val s: String) extends Product with Serializable {
+
+  def copy(n: Int = this.n, s: String = this.s) = new Foo(n, s)
 
   def withN(n: Int) = new Foo(n = n, s = s)
   def withS(s: String) = new Foo(n = n, s = s)
