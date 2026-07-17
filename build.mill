@@ -2,14 +2,18 @@
 
 package build
 
-import mill.*, scalalib.*, publish.*
+import mill.*
 import mill.api.BuildCtx
+import mill.scalalib.*
+import mill.scalalib.publish.*
 import mill.util.VcsVersionModule
 
 val scalaVersions = Seq("2.12.21", "2.13.18")
 
-trait SharedModule extends CrossScalaModule {
-  def sources = Task.Sources(BuildCtx.workspaceRoot / "src" / "main" / "scala")
+object dataClass extends Cross[DataClassModule](scalaVersions)
+
+trait DataClassModule extends CrossScalaModule, PublishModule, VcsVersionModule {
+  def sources = Task.Sources(BuildCtx.workspaceRoot / "src/main/scala")
 
   def scalacOptions = Seq("-target:jvm-1.8", "-deprecation") ++
     (if (scalaVersion().startsWith("2.13.")) Seq("-Ymacro-annotations") else Seq.empty)
@@ -20,11 +24,7 @@ trait SharedModule extends CrossScalaModule {
     if (crossValue.startsWith("2.12."))
       Seq(mvn"org.scalamacros:::paradise:2.1.1")
     else Seq.empty
-}
 
-object dataClass extends Cross[DataClassModule](scalaVersions)
-
-trait DataClassModule extends SharedModule, PublishModule, VcsVersionModule {
   def artifactName = "data-class"
 
   def pomSettings = PomSettings(
@@ -43,7 +43,7 @@ trait DataClassModule extends SharedModule, PublishModule, VcsVersionModule {
   )
 
   object test extends ScalaTests {
-    def sources = Task.Sources(BuildCtx.workspaceRoot / "src" / "test" / "scala")
+    def sources = Task.Sources(BuildCtx.workspaceRoot / "src/test/scala")
     def mvnDeps = Seq(
       mvn"com.chuusai::shapeless:2.3.13",
       mvn"com.lihaoyi::utest:0.9.5"
@@ -52,24 +52,26 @@ trait DataClassModule extends SharedModule, PublishModule, VcsVersionModule {
   }
 }
 
-trait SmokeTestModule extends CrossScalaModule {
-  def moduleDeps = Seq(dataClass())
-  def scalacOptions = dataClass().scalacOptions()
-  def scalacPluginMvnDeps = dataClass().scalacPluginMvnDeps
-}
+object test extends Module {
+  trait SmokeTestModule extends CrossScalaModule {
+    def moduleDeps = Seq(dataClass())
+    def scalacOptions = dataClass().scalacOptions()
+    def scalacPluginMvnDeps = dataClass().scalacPluginMvnDeps
+  }
 
-object testProjV1 extends Cross[TestProjV1Module](scalaVersions)
-trait TestProjV1Module extends SmokeTestModule {
-  def sources = Task.Sources(BuildCtx.workspaceRoot / "test" / "proj-v1" / "src" / "main" / "scala")
-}
+  object testProjV1 extends Cross[TestProjV1Module](scalaVersions)
+  trait TestProjV1Module extends SmokeTestModule {
+    def sources = Task.Sources("proj-v1/src/main/scala")
+  }
 
-object testProjV2 extends Cross[TestProjV2Module](scalaVersions)
-trait TestProjV2Module extends SmokeTestModule {
-  def sources = Task.Sources(BuildCtx.workspaceRoot / "test" / "proj-v2" / "src" / "main" / "scala")
-}
+  object testProjV2 extends Cross[TestProjV2Module](scalaVersions)
+  trait TestProjV2Module extends SmokeTestModule {
+    def sources = Task.Sources("proj-v2/src/main/scala")
+  }
 
-object userProjV1 extends Cross[UserProjV1Module](scalaVersions)
-trait UserProjV1Module extends CrossScalaModule {
-  def moduleDeps = Seq(testProjV1())
-  def sources = Task.Sources(BuildCtx.workspaceRoot / "test" / "user-proj-v1" / "src" / "main" / "scala")
+  object userProjV1 extends Cross[UserProjV1Module](scalaVersions)
+  trait UserProjV1Module extends CrossScalaModule {
+    def moduleDeps = Seq(testProjV1())
+    def sources = Task.Sources("user-proj-v1/src/main/scala")
+  }
 }

@@ -22,9 +22,9 @@ jobs:
       run: |
         SCALA_SEGMENT=${SCALA_VERSION//./_}
         ./mill dataClass.$SCALA_SEGMENT.test.testForked
-        ./mill testProjV1.$SCALA_SEGMENT.compile
-        ./mill testProjV2.$SCALA_SEGMENT.compile
-        ./mill userProjV1.$SCALA_SEGMENT.compile
+        ./mill test.testProjV1.$SCALA_SEGMENT.compile
+        ./mill test.testProjV2.$SCALA_SEGMENT.compile
+        ./mill test.userProjV1.$SCALA_SEGMENT.compile
       env:
         SCALA_VERSION: ${{ matrix.SCALA_VERSION }}
 
