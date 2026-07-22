@@ -65,6 +65,11 @@ object OneFieldTests extends TestSuite {
       assert(foo.count == 1)
       assert(foo2.count == 2)
     }
+    test("copy") {
+      val foo = Foo(1)
+      assert(foo.copy() == foo)
+      assert(foo.copy(count = 2) == Foo(2))
+    }
     test("option setter") {
       @data(optionSetters = true) class Bar(count: Option[Int] = None)
       val bar = Bar()

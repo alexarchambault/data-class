@@ -72,6 +72,26 @@ object MoreFieldsTests extends TestSuite {
         assert(bar2.s == "a")
         assert(bar2.b == false)
         assert(bar2.d == 2.0)
+
+        val copied = bar2.copy(s = "b")
+        assert(copied == Bar(2, "b", false, 2.0))
+
+        val copiedOldSignature = bar2.copy(3, "c")
+        assert(copiedOldSignature == Bar(3, "c", false, 2.0))
+      }
+
+      test("multiple versions") {
+        @data class Bar(
+            n: Int,
+            @since("1") s: String = "",
+            @since("2") b: Boolean = false
+        )
+
+        val bar = Bar(1, "a", true)
+        assert(bar.copy() == bar)
+        assert(bar.copy(2) == Bar(2, "a", true))
+        assert(bar.copy(2, "b") == Bar(2, "b", true))
+        assert(bar.copy(b = false) == Bar(1, "a", false))
       }
     }
 
