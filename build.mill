@@ -48,11 +48,17 @@ trait DataClassModule extends CrossScalaModule, PublishModule, VcsVersionModule,
     else Seq.empty
 
   def artifactName = "data-class"
-  def mimaPreviousVersions = {
-    val firstCompatibleVersion =
-      if (crossValue.startsWith("3.")) Version("0.3.0")
-      else Version("0.2.5")
-    releaseVersions.filter(version => Version(version).compare(firstCompatibleVersion) >= 0)
+  def mimaPreviousVersions =
+    releaseVersions.filter(version =>
+      Version(version).compare(Version("0.2.5")) >= 0
+    )
+  override def mimaPreviousArtifacts: T[Seq[Dep]] = Task {
+    val artifacts = super.mimaPreviousArtifacts()
+    if (crossValue.startsWith("3."))
+      artifacts.filter(dep =>
+        Version(dep.version).compare(Version("0.2.7")) > 0
+      )
+    else artifacts
   }
 
   def pomSettings = PomSettings(
