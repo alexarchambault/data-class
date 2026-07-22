@@ -10,23 +10,16 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        SCALA_VERSION: ["2.12.21", "2.13.18"]
-    name: Test (Scala ${{ matrix.SCALA_VERSION }})
+    name: Test
     steps:
     - uses: actions/checkout@v7
     - uses: coursier/cache-action@v8
     - name: Compile
       run: |
-        SCALA_SEGMENT=${SCALA_VERSION//./_}
-        ./mill dataClass.$SCALA_SEGMENT.test.testForked
-        ./mill test.testProjV1.$SCALA_SEGMENT.compile
-        ./mill test.testProjV2.$SCALA_SEGMENT.compile
-        ./mill test.userProjV1.$SCALA_SEGMENT.compile
-      env:
-        SCALA_VERSION: ${{ matrix.SCALA_VERSION }}
+        ./mill dataClass._.test.testForked
+        ./mill test.testProjV1._.compile
+        ./mill test.testProjV2._.compile
+        ./mill test.userProjV1._.compile
 
   mima:
     runs-on: ubuntu-latest
@@ -55,6 +48,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        fetch-tags: true
     - uses: coursier/cache-action@v8
     - name: Release
       run: |
