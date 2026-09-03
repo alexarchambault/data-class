@@ -399,6 +399,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             }
           }
 
+          // No copy methods if the class defines copy itself. When settersCallApply is set, the
+          // generated copy methods go through apply, like the setters, rather than the constructor.
           val copyMethods =
             if (hasCopy) Nil
             else {
@@ -420,9 +422,14 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                   allParams0.head.drop(idx).map(p => q"this.${p.name}")
                 val remainingArgs =
                   remainingParamLists.map(_.map(p => q"${p.name}"))
+                val args = (supplied ++ retained) :: remainingArgs
+                val body =
+                  if (generatedSettersCallApply)
+                    q"${tpname.toTermName}[..$tparamsRef](...$args)"
+                  else q"new $tpname[..$tparamsRef](...$args)"
                 q"""def copy(...${firstParamList :: remainingParamLists}): $tpname[..$tparamsRef] =
-                  new $tpname[..$tparamsRef](...${(supplied ++ retained) :: remainingArgs})
-                """
+                $body
+              """
               }
             }
 
