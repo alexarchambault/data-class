@@ -284,7 +284,9 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             val rendered = annotation.toString()
             Option(annotation.tpe).exists(
               _.typeSymbol.fullName == "dataclass.since"
-            ) || rendered.startsWith("new since(") || rendered.startsWith("new unroll(")
+            ) || rendered.startsWith("new since(") || rendered.startsWith(
+              "new unroll("
+            )
           }
 
           val splits = {
@@ -407,8 +409,10 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               val remainingParamLists: List[List[ValDef]] =
                 allParams0.tail.map(_.map(copyParam(_, idx == len)))
               val supplied = firstParamList.map(p => q"${p.name}")
-              val retained = allParams0.head.drop(idx).map(p => q"this.${p.name}")
-              val remainingArgs = remainingParamLists.map(_.map(p => q"${p.name}"))
+              val retained =
+                allParams0.head.drop(idx).map(p => q"this.${p.name}")
+              val remainingArgs =
+                remainingParamLists.map(_.map(p => q"${p.name}"))
               q"""def copy(...${firstParamList :: remainingParamLists}): $tpname[..$tparamsRef] =
                 new $tpname[..$tparamsRef](...${(supplied ++ retained) :: remainingArgs})
               """

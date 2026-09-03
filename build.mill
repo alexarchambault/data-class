@@ -13,7 +13,7 @@ import com.github.lolgab.mill.mima.Mima
 import coursier.version.Version
 
 val scala2Versions = Seq("2.12.21", "2.13.18")
-val scalaVersions = scala2Versions :+ "3.8.2"
+val scalaVersions = scala2Versions :+ "3.8.4"
 
 private def releaseVersions =
   os.proc("git", "tag", "--list", "v*")
