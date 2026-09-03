@@ -65,6 +65,11 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
           val hasTuple = hasMethod("tuple")
           val hasCanEqual = hasMethod("canEqual", hasArgs = true)
           val hasEquals = hasMethod("equals", hasArgs = true)
+          val hasCopy = stats.exists {
+            case DefDef(_, nme, _, _, _, _) =>
+              nme.decodedName.toString == "copy"
+            case _ => false
+          }
 
           val namedArgs = paramss.map(_.map { p =>
             q"${p.name}=this.${p.name}"
@@ -394,30 +399,39 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             }
           }
 
-          val copyMethods = {
-            val len = allParams0.head.length
-            def copyParam(p: ValDef, withDefault: Boolean): ValDef = {
-              val flags =
-                if (p.mods.hasFlag(Flag.IMPLICIT)) Flag.IMPLICIT
-                else NoFlags
-              val rhs = if (withDefault) q"this.${p.name}" else EmptyTree
-              ValDef(Modifiers(flags), p.name, p.tpt, rhs)
-            }
-            splits.map { idx =>
-              val firstParamList: List[ValDef] =
-                allParams0.head.take(idx).map(copyParam(_, idx == len))
-              val remainingParamLists: List[List[ValDef]] =
-                allParams0.tail.map(_.map(copyParam(_, idx == len)))
-              val supplied = firstParamList.map(p => q"${p.name}")
-              val retained =
-                allParams0.head.drop(idx).map(p => q"this.${p.name}")
-              val remainingArgs =
-                remainingParamLists.map(_.map(p => q"${p.name}"))
-              q"""def copy(...${firstParamList :: remainingParamLists}): $tpname[..$tparamsRef] =
-                new $tpname[..$tparamsRef](...${(supplied ++ retained) :: remainingArgs})
+          // No copy methods if the class defines copy itself. When settersCallApply is set, the
+          // generated copy methods go through apply, like the setters, rather than the constructor.
+          val copyMethods =
+            if (hasCopy) Nil
+            else {
+              val len = allParams0.head.length
+              def copyParam(p: ValDef, withDefault: Boolean): ValDef = {
+                val flags =
+                  if (p.mods.hasFlag(Flag.IMPLICIT)) Flag.IMPLICIT
+                  else NoFlags
+                val rhs = if (withDefault) q"this.${p.name}" else EmptyTree
+                ValDef(Modifiers(flags), p.name, p.tpt, rhs)
+              }
+              splits.map { idx =>
+                val firstParamList: List[ValDef] =
+                  allParams0.head.take(idx).map(copyParam(_, idx == len))
+                val remainingParamLists: List[List[ValDef]] =
+                  allParams0.tail.map(_.map(copyParam(_, idx == len)))
+                val supplied = firstParamList.map(p => q"${p.name}")
+                val retained =
+                  allParams0.head.drop(idx).map(p => q"this.${p.name}")
+                val remainingArgs =
+                  remainingParamLists.map(_.map(p => q"${p.name}"))
+                val args = (supplied ++ retained) :: remainingArgs
+                val body =
+                  if (generatedSettersCallApply)
+                    q"${tpname.toTermName}[..$tparamsRef](...$args)"
+                  else q"new $tpname[..$tparamsRef](...$args)"
+                q"""def copy(...${firstParamList :: remainingParamLists}): $tpname[..$tparamsRef] =
+                $body
               """
+              }
             }
-          }
 
           val mods0 = Modifiers(
             mods.flags.|(Flag.FINAL),

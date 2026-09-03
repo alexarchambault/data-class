@@ -11,7 +11,7 @@ class data(
       * Option[Foo]`)
       */
     optionSetters: Boolean = false,
-    /** Whether setters will call apply or new */
+    /** Whether setters and copy methods will call apply or new */
     settersCallApply: Boolean = false,
     /** Whether hashCode will be cached */
     cachedHashCode: Boolean = false

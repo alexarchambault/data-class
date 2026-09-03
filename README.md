@@ -94,7 +94,13 @@ generates a method `withCount(count: Int)` returning a new instance of the
 class with `count` updated).
 
 Most notably, it does not generate an `unapply` method. Its `copy` methods have
-the same binary-compatible overloads as its constructors (see below).
+the same binary-compatible overloads as its constructors (see below). No `copy`
+methods are generated if the class defines one itself.
+
+With `@data(settersCallApply = true)`, the generated `with` and `copy` methods create
+new instances via the companion `apply` rather than via the constructor, which allows
+`apply` to intern or validate instances for example (typically along with `apply = false`,
+with a hand-written `apply` in the companion).
 
 In the example above, the `@data` macro generates code like the following (modulo macro hygiene):
 ```scala

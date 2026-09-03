@@ -56,7 +56,7 @@ trait DataClassModule extends CrossScalaModule, PublishModule, VcsVersionModule,
     val artifacts = super.mimaPreviousArtifacts()
     if (crossValue.startsWith("3."))
       artifacts.filter(dep =>
-        Version(dep.version).compare(Version("0.2.7")) > 0
+        Version(dep.version).compare(Version("0.2.8")) > 0
       )
     else artifacts
   }

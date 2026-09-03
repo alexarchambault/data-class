@@ -98,6 +98,34 @@ object OneFieldTests extends TestSuite {
       assert(bar.withCount(2).count == 0)
     }
 
+    test("copy calls apply") {
+      @data(apply = false, settersCallApply = true) class CrazyBar(count: Int)
+      object CrazyBar {
+        def apply(count: Int): CrazyBar = new CrazyBar(0)
+      }
+      val bar = new CrazyBar(1)
+      assert(bar.copy(2).count == 0)
+      assert(bar.copy(count = 2).count == 0)
+    }
+
+    test("copy calls new by default") {
+      @data(apply = false) class CrazyBar(count: Int)
+      object CrazyBar {
+        def apply(count: Int): CrazyBar = new CrazyBar(0)
+      }
+      val bar = new CrazyBar(1)
+      assert(bar.copy(2).count == 2)
+    }
+
+    test("user-defined copy") {
+      @data class Bar(count: Int) {
+        def copy(count: Int = count): Bar = new Bar(count + 10)
+      }
+      val bar = Bar(1)
+      assert(bar.copy(2).count == 12)
+      assert(bar.copy().count == 11)
+    }
+
     test("tuple") {
       @data class Foo0(a: Int) {
         def tuple0 = tuple
