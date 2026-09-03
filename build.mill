@@ -10,6 +10,8 @@ import mill.scalalib.*
 import mill.scalalib.publish.*
 import com.github.lolgab.mill.mima.Mima
 import coursier.version.Version
+import java.nio.file.Files
+import java.util.jar.{Attributes, JarOutputStream, Manifest}
 
 val scala2Versions = Seq("2.12.21", "2.13.18")
 val scalaVersions = scala2Versions :+ "3.8.4"
@@ -57,6 +59,15 @@ object dataClass extends Cross[DataClassModule](scalaVersions)
 
 trait DataClassModule extends CrossScalaModule, PublishModule, Mima {
   def publishVersion = Task.Input(computePublishVersion)
+
+  override def docJar = Task {
+    val manifest = new Manifest
+    manifest.getMainAttributes.put(Attributes.Name.MANIFEST_VERSION, "1.0")
+    val path = Task.dest / "out.jar"
+    val stream = new JarOutputStream(Files.newOutputStream(path.toNIO), manifest)
+    stream.close()
+    PathRef(path)
+  }
 
   def sources = Task.Sources(
     BuildCtx.workspaceRoot / "src" / "main" /
