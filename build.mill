@@ -8,7 +8,6 @@ import mill.*
 import mill.api.BuildCtx
 import mill.scalalib.*
 import mill.scalalib.publish.*
-import mill.util.VcsVersionModule
 import com.github.lolgab.mill.mima.Mima
 import coursier.version.Version
 
@@ -24,9 +23,41 @@ private def releaseVersions =
       case tag if tag.matches("v[0-9]+\\.[0-9]+\\.[0-9]+") => tag.stripPrefix("v")
     }
 
+private def gitOutput(args: String*) =
+  os.proc("git", args)
+    .call(cwd = BuildCtx.workspaceRoot)
+    .out
+    .lines()
+    .map(_.trim)
+    .filter(_.nonEmpty)
+
+private def headTag =
+  gitOutput("tag", "--points-at", "HEAD", "--list", "v*").headOption
+
+private def latestTag =
+  gitOutput("describe", "--tags", "--abbrev=0", "--match", "v*").headOption
+
+private def snapshotVersion(tag: String) = {
+  val parts = tag.stripPrefix("v").split('.')
+  if (parts.length < 3)
+    sys.error(s"Malformed tag $tag (expected 3 '.'-separated parts)")
+  val patch = parts(2).toIntOption.getOrElse {
+    sys.error(s"Malformed tag $tag (third part is not a number)")
+  }
+  s"${parts(0)}.${parts(1)}.${patch + 1}-SNAPSHOT"
+}
+
+private def computePublishVersion =
+  headTag
+    .map(_.stripPrefix("v"))
+    .orElse(latestTag.map(snapshotVersion))
+    .getOrElse(sys.error("No v* tag found in the repository"))
+
 object dataClass extends Cross[DataClassModule](scalaVersions)
 
-trait DataClassModule extends CrossScalaModule, PublishModule, VcsVersionModule, Mima {
+trait DataClassModule extends CrossScalaModule, PublishModule, Mima {
+  def publishVersion = Task.Input(computePublishVersion)
+
   def sources = Task.Sources(
     BuildCtx.workspaceRoot / "src" / "main" /
       (if (crossValue.startsWith("3.")) "scala-3" else "scala-2")
