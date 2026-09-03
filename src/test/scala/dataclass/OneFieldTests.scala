@@ -98,6 +98,15 @@ object OneFieldTests extends TestSuite {
       assert(bar.withCount(2).count == 0)
     }
 
+    test("user-defined copy") {
+      @data class Bar(count: Int) {
+        def copy(count: Int = count): Bar = new Bar(count + 10)
+      }
+      val bar = Bar(1)
+      assert(bar.copy(2).count == 12)
+      assert(bar.copy().count == 11)
+    }
+
     test("tuple") {
       @data class Foo0(a: Int) {
         def tuple0 = tuple
