@@ -14,7 +14,7 @@ import java.nio.file.Files
 import java.util.jar.{Attributes, JarOutputStream, Manifest}
 
 val scala2Versions = Seq("2.12.21", "2.13.18")
-val scalaVersions = scala2Versions :+ "3.8.4"
+val scalaVersions = scala2Versions :+ "3.9.0"
 
 private def releaseVersions =
   os.proc("git", "tag", "--list", "v*")
