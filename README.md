@@ -148,6 +148,24 @@ object Foo {
 }
 ```
 
+With `@data(deprecatedSetters = true)`, the generated `with` methods are annotated with
+`@deprecated`, so that users of the class get warned when calling them (and are pushed
+towards `copy` instead, say). The parameters of the generated `@deprecated` annotation
+can be set with `deprecatedSettersMessage` and `deprecatedSettersSince`, like
+```scala
+@data(
+  deprecatedSetters = true,
+  deprecatedSettersMessage = "Use copy instead",
+  deprecatedSettersSince = "1.2"
+)
+class Foo(n: Int, s: String)
+```
+which generates setters like
+```scala
+@deprecated("Use copy instead", "1.2")
+def withN(n: Int) = new Foo(n = n, s = s)
+```
+
 ### shapeless
 
 By default, the classes annotated with `@data` now have a shape that

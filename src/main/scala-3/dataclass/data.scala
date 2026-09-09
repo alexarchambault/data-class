@@ -12,5 +12,8 @@ class data(
     publicConstructor: Boolean = true,
     optionSetters: Boolean = false,
     settersCallApply: Boolean = false,
-    cachedHashCode: Boolean = false
+    cachedHashCode: Boolean = false,
+    deprecatedSetters: Boolean = false,
+    deprecatedSettersMessage: String = "",
+    deprecatedSettersSince: String = ""
 ) extends StaticAnnotation

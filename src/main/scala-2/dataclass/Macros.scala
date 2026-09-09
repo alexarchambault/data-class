@@ -17,7 +17,10 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       generateApplyMethods: Boolean,
       generateOptionSetters: Boolean,
       generatedSettersCallApply: Boolean,
-      cachedHashCode: Boolean
+      cachedHashCode: Boolean,
+      deprecatedSetters: Boolean,
+      deprecatedSettersMessage: String,
+      deprecatedSettersSince: String
   ) extends ImplTransformer {
     override def transformClass(
         cdef: ClassDef,
@@ -75,6 +78,17 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             q"${p.name}=this.${p.name}"
           })
 
+          val setterMods =
+            if (deprecatedSetters)
+              Modifiers(
+                NoFlags,
+                typeNames.EMPTY,
+                List(
+                  q"new _root_.scala.deprecated($deprecatedSettersMessage, $deprecatedSettersSince)"
+                )
+              )
+            else Modifiers()
+
           val setters = paramss.zipWithIndex.flatMap {
             case (l, groupIdx) =>
               l.zipWithIndex.flatMap {
@@ -92,9 +106,9 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
                       namedArgs0: List[List[Tree]]
                   ) =
                     if (generatedSettersCallApply)
-                      q"def $withDefIdent(${p.name}: $tpe0) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)"
+                      q"$setterMods def $withDefIdent(${p.name}: $tpe0) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)"
                     else
-                      q"def $withDefIdent(${p.name}: $tpe0) = new $tpname[..$tparamsRef](...$namedArgs0)"
+                      q"$setterMods def $withDefIdent(${p.name}: $tpe0) = new $tpname[..$tparamsRef](...$namedArgs0)"
 
                   val extraMethods =
                     if (generateOptionSetters) {
@@ -533,12 +547,54 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       case _                      => false
     }
 
+    val deprecatedSetters = params.exists {
+      case q"deprecatedSetters=true" => true
+      case _                         => false
+    }
+
+    def stringValue(name: String, value: Tree): String =
+      value match {
+        case Literal(Constant(str: String)) => str
+        case _                              =>
+          c.abort(
+            value.pos,
+            s"$name parameter of @data annotation must be a string literal"
+          )
+      }
+
+    val deprecatedSettersMessage = params
+      .collect {
+        case q"deprecatedSettersMessage=$value" =>
+          stringValue("deprecatedSettersMessage", value)
+      }
+      .lastOption
+      .getOrElse("")
+
+    val deprecatedSettersSince = params
+      .collect {
+        case q"deprecatedSettersSince=$value" =>
+          stringValue("deprecatedSettersSince", value)
+      }
+      .lastOption
+      .getOrElse("")
+
+    if (
+      !deprecatedSetters && (deprecatedSettersMessage.nonEmpty || deprecatedSettersSince.nonEmpty)
+    )
+      c.warning(
+        c.enclosingPosition,
+        "deprecatedSettersMessage / deprecatedSettersSince parameters of @data annotation have no effect unless deprecatedSetters is set"
+      )
+
     annottees.transformAnnottees(
       new Transformer(
         generateApplyMethods,
         generateOptionSetters,
         generatedSettersCallApply,
-        generatedCachedHashCode
+        generatedCachedHashCode,
+        deprecatedSetters,
+        deprecatedSettersMessage,
+        deprecatedSettersSince
       )
     )
   }

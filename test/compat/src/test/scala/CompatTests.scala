@@ -9,6 +9,12 @@ import utest._
     @unroll c: String = ""
 )
 
+@data(
+  deprecatedSetters = true,
+  deprecatedSettersMessage = "Use copy instead",
+  deprecatedSettersSince = "1.3"
+) case class Deprecating(a: Int, @unroll b: Boolean = false)
+
 object CompatTests extends TestSuite {
   val tests = Tests {
     test("construction") {
@@ -27,6 +33,9 @@ object CompatTests extends TestSuite {
       assert(evolving.copy(2) == Evolving(2, true, "value"))
       assert(evolving.copy(2, false) == Evolving(2, false, "value"))
       assert(evolving.copy(c = "updated") == Evolving(1, true, "updated"))
+
+      val deprecating = Deprecating(1, true)
+      assert(deprecating.copy(2) == Deprecating(2, true))
     }
   }
 }

@@ -8,7 +8,7 @@ import mill.*
 import mill.api.BuildCtx
 import mill.scalalib.*
 import mill.scalalib.publish.*
-import com.github.lolgab.mill.mima.Mima
+import com.github.lolgab.mill.mima.{DirectMissingMethodProblem, Mima, ProblemFilter}
 import coursier.version.Version
 import java.nio.file.Files
 import java.util.jar.{Attributes, JarOutputStream, Manifest}
@@ -90,6 +90,17 @@ trait DataClassModule extends CrossScalaModule, PublishModule, Mima {
     else Seq.empty
 
   def artifactName = "data-class"
+  // @data is a compile-time only annotation, and Macros#Transformer is an
+  // implementation detail of the macro - neither is meant to be called at
+  // runtime, so adding parameters to them is fine
+  def mimaBinaryIssueFilters = Task {
+    Seq(
+      ProblemFilter.exclude[DirectMissingMethodProblem]("dataclass.data.this"),
+      ProblemFilter.exclude[DirectMissingMethodProblem](
+        "dataclass.Macros#Transformer.this"
+      )
+    )
+  }
   def mimaPreviousVersions =
     releaseVersions.filter(version =>
       Version(version).compare(Version("0.2.5")) >= 0
