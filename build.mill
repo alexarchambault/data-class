@@ -16,15 +16,6 @@ import java.util.jar.{Attributes, JarOutputStream, Manifest}
 val scala2Versions = Seq("2.12.21", "2.13.18")
 val scalaVersions = scala2Versions :+ "3.8.4"
 
-private def releaseVersions =
-  os.proc("git", "tag", "--list", "v*")
-    .call(cwd = BuildCtx.workspaceRoot)
-    .out
-    .lines()
-    .collect {
-      case tag if tag.matches("v[0-9]+\\.[0-9]+\\.[0-9]+") => tag.stripPrefix("v")
-    }
-
 private def gitOutput(args: String*) =
   os.proc("git", args)
     .call(cwd = BuildCtx.workspaceRoot)
@@ -33,8 +24,21 @@ private def gitOutput(args: String*) =
     .map(_.trim)
     .filter(_.nonEmpty)
 
-private def headTag =
-  gitOutput("tag", "--points-at", "HEAD", "--list", "v*").headOption
+private def headTags =
+  gitOutput("tag", "--points-at", "HEAD", "--list", "v*")
+
+private def headTag = headTags.headOption
+
+// Tags on HEAD are ignored - the version they correspond to is the one we are
+// about to publish, not a previous release to check binary compatibility with
+private def releaseVersions = {
+  val headTags0 = headTags.toSet
+  gitOutput("tag", "--list", "v*")
+    .filterNot(headTags0)
+    .collect {
+      case tag if tag.matches("v[0-9]+\\.[0-9]+\\.[0-9]+") => tag.stripPrefix("v")
+    }
+}
 
 private def latestTag =
   gitOutput("describe", "--tags", "--abbrev=0", "--match", "v*").headOption
