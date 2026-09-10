@@ -15,5 +15,6 @@ class data(
     cachedHashCode: Boolean = false,
     deprecatedSetters: Boolean = false,
     deprecatedSettersMessage: String = "",
-    deprecatedSettersSince: String = ""
+    deprecatedSettersSince: String = "",
+    setters: Boolean = true
 ) extends StaticAnnotation

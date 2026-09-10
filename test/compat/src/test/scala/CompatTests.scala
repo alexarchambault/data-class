@@ -15,6 +15,8 @@ import utest._
   deprecatedSettersSince = "1.3"
 ) case class Deprecating(a: Int, @unroll b: Boolean = false)
 
+@data(setters = false) case class NoSetters(a: Int, @unroll b: Boolean = false)
+
 object CompatTests extends TestSuite {
   val tests = Tests {
     test("construction") {
@@ -36,6 +38,9 @@ object CompatTests extends TestSuite {
 
       val deprecating = Deprecating(1, true)
       assert(deprecating.copy(2) == Deprecating(2, true))
+
+      val noSetters = NoSetters(1, true)
+      assert(noSetters.copy(2) == NoSetters(2, true))
     }
   }
 }

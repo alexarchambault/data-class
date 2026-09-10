@@ -166,6 +166,10 @@ which generates setters like
 def withN(n: Int) = new Foo(n = n, s = s)
 ```
 
+With `@data(setters = false)`, no `with` method is generated at all, so that only
+`copy` can be used to create updated instances. `optionSetters` and
+`deprecatedSetters` have no effect then.
+
 ### shapeless
 
 By default, the classes annotated with `@data` now have a shape that

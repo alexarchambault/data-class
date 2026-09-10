@@ -24,7 +24,9 @@ class data(
     /** `since` parameter of the `@deprecated` annotation added on setters when
       * `deprecatedSetters` is set
       */
-    deprecatedSettersSince: String = ""
+    deprecatedSettersSince: String = "",
+    /** Whether to generate `withFoo(foo: Foo)` setters at all */
+    setters: Boolean = true
 ) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro Macros.impl
 }

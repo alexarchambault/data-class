@@ -20,7 +20,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       cachedHashCode: Boolean,
       deprecatedSetters: Boolean,
       deprecatedSettersMessage: String,
-      deprecatedSettersSince: String
+      deprecatedSettersSince: String,
+      generateSetters: Boolean
   ) extends ImplTransformer {
     override def transformClass(
         cdef: ClassDef,
@@ -89,55 +90,59 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               )
             else Modifiers()
 
-          val setters = paramss.zipWithIndex.flatMap {
-            case (l, groupIdx) =>
-              l.zipWithIndex.flatMap {
-                case (p, idx) =>
-                  val namedArgs0 =
-                    namedArgs.updated(
-                      groupIdx,
-                      namedArgs(groupIdx).updated(idx, q"${p.name}=${p.name}")
-                    )
-                  val fn = p.name.decodedName.toString.capitalize
-                  val withDefIdent = TermName(s"with$fn")
+          val setters =
+            if (generateSetters)
+              paramss.zipWithIndex.flatMap {
+                case (l, groupIdx) =>
+                  l.zipWithIndex.flatMap {
+                    case (p, idx) =>
+                      val namedArgs0 =
+                        namedArgs.updated(
+                          groupIdx,
+                          namedArgs(groupIdx)
+                            .updated(idx, q"${p.name}=${p.name}")
+                        )
+                      val fn = p.name.decodedName.toString.capitalize
+                      val withDefIdent = TermName(s"with$fn")
 
-                  def settersCallApply(
-                      tpe0: Tree,
-                      namedArgs0: List[List[Tree]]
-                  ) =
-                    if (generatedSettersCallApply)
-                      q"$setterMods def $withDefIdent(${p.name}: $tpe0) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)"
-                    else
-                      q"$setterMods def $withDefIdent(${p.name}: $tpe0) = new $tpname[..$tparamsRef](...$namedArgs0)"
+                      def settersCallApply(
+                          tpe0: Tree,
+                          namedArgs0: List[List[Tree]]
+                      ) =
+                        if (generatedSettersCallApply)
+                          q"$setterMods def $withDefIdent(${p.name}: $tpe0) = ${tpname.toTermName}[..$tparamsRef](...$namedArgs0)"
+                        else
+                          q"$setterMods def $withDefIdent(${p.name}: $tpe0) = new $tpname[..$tparamsRef](...$namedArgs0)"
 
-                  val extraMethods =
-                    if (generateOptionSetters) {
-                      val wrappedOptionTpe = p.tpt match {
-                        case AppliedTypeTree(
-                              Ident(TypeName("Option")),
-                              List(wrapped)
-                            ) =>
-                          Seq(wrapped)
-                        case _ => Nil
-                      }
+                      val extraMethods =
+                        if (generateOptionSetters) {
+                          val wrappedOptionTpe = p.tpt match {
+                            case AppliedTypeTree(
+                                  Ident(TypeName("Option")),
+                                  List(wrapped)
+                                ) =>
+                              Seq(wrapped)
+                            case _ => Nil
+                          }
 
-                      wrappedOptionTpe.map { tpe0 =>
-                        val namedArgs0 =
-                          namedArgs.updated(
-                            groupIdx,
-                            namedArgs(groupIdx).updated(
-                              idx,
-                              q"${p.name}=_root_.scala.Some(${p.name})"
-                            )
-                          )
-                        settersCallApply(tpe0, namedArgs0)
-                      }
-                    } else
-                      Nil
+                          wrappedOptionTpe.map { tpe0 =>
+                            val namedArgs0 =
+                              namedArgs.updated(
+                                groupIdx,
+                                namedArgs(groupIdx).updated(
+                                  idx,
+                                  q"${p.name}=_root_.scala.Some(${p.name})"
+                                )
+                              )
+                            settersCallApply(tpe0, namedArgs0)
+                          }
+                        } else
+                          Nil
 
-                  settersCallApply(p.tpt, namedArgs0) +: extraMethods
+                      settersCallApply(p.tpt, namedArgs0) +: extraMethods
+                  }
               }
-          }
+            else Nil
 
           val wildcardedTparams = tparams.map {
             case TypeDef(mods, name, tparams, rhs) if tparams.isEmpty =>
@@ -532,6 +537,11 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       case _              => true
     }
 
+    val generateSetters = params.forall {
+      case q"setters=false" => false
+      case _                => true
+    }
+
     val generateOptionSetters = params.exists {
       case q"optionSetters=true" => true
       case _                     => false
@@ -586,6 +596,12 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
         "deprecatedSettersMessage / deprecatedSettersSince parameters of @data annotation have no effect unless deprecatedSetters is set"
       )
 
+    if (!generateSetters && (generateOptionSetters || deprecatedSetters))
+      c.warning(
+        c.enclosingPosition,
+        "optionSetters / deprecatedSetters parameters of @data annotation have no effect when setters is false"
+      )
+
     annottees.transformAnnottees(
       new Transformer(
         generateApplyMethods,
@@ -594,7 +610,8 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
         generatedCachedHashCode,
         deprecatedSetters,
         deprecatedSettersMessage,
-        deprecatedSettersSince
+        deprecatedSettersSince,
+        generateSetters
       )
     )
   }
