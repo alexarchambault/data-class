@@ -144,6 +144,9 @@ object PluginTests extends TestSuite {
         assert(copied == Typed("a", 2))
         assert(invoke(typed, "copy", (classOf[Object], "b")) == Typed("b", 1))
       }
+      test("called from a suspended unit") {
+        assert(SuspendedUnit.copied == Typed("a", 1))
+      }
     }
   }
 }

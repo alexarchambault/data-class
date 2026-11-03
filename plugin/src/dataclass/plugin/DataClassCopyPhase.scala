@@ -60,15 +60,6 @@ class DataClassCopyPhase extends PluginPhase with IdentityDenotTransformer {
 
   private val dataAnnotationName = "dataclass.data"
 
-  /**
-   * The `copy` methods this run made monomorphic.
-   *
-   * Type arguments are only dropped for these: a `@data` case class read from a class path
-   * compiled without this phase keeps a polymorphic `copy`, that its callers still pass type
-   * arguments to.
-   */
-  private val monomorphized = new mutable.HashSet[Symbol]
-
   /** The `copy$default$n` methods this run adds, for the parameters of a trailing implicit clause */
   private val addedDefaultGetters = new mutable.HashMap[Symbol, List[tpd.DefDef]]
 
@@ -90,6 +81,22 @@ class DataClassCopyPhase extends PluginPhase with IdentityDenotTransformer {
       (sym.name.is(DefaultGetterName) && sym.name.exclude(DefaultGetterName) == nme.copy))
     }
 
+  /**
+   * Whether this phase made `sym` monomorphic, in this compiler run or in an earlier one.
+   *
+   * Units expanding macros defined in the same compilation are suspended, then compiled in a later
+   * run, against the symbols of the earlier one, whose `copy` this phase already changed then.
+   * The signature change is checked on the symbol itself for that reason.
+   *
+   * Type arguments are only dropped from calls to these: a `@data` case class read from a class
+   * path compiled without this phase keeps a polymorphic `copy`, that its callers still pass type
+   * arguments to.
+   */
+  private def isMonomorphized(sym: Symbol)(using Context): Boolean =
+    isCopyOfDataClass(sym) &&
+      atPhase(this)(sym.info).isInstanceOf[PolyType] &&
+      !atPhase(next)(sym.info).isInstanceOf[PolyType]
+
   /** The leading type parameter clause of `dd`, if it is the one of its class */
   private def classTypeParams(dd: DefDef)(using Context): Option[List[Symbol]] =
     dd.paramss.headOption
@@ -107,7 +114,6 @@ class DataClassCopyPhase extends PluginPhase with IdentityDenotTransformer {
   // Signatures are changed for the whole run first: the trees the second pass rewrites are typed
   // against them, and a `copy` can be called from a unit compiled before the one defining it.
   override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
-    monomorphized.clear()
     addedDefaultGetters.clear()
     units.foreach(unit => new SignatureInstaller().traverse(unit.tpdTree))
     super.runOn(units)
@@ -192,7 +198,6 @@ class DataClassCopyPhase extends PluginPhase with IdentityDenotTransformer {
               param.copySymDenotation(info = param.info.subst(typeParams, to)).installAfter(phase)
             val info = newInfo(dd, to)
             dd.symbol.copySymDenotation(info = info, rawParamss = paramSymss).installAfter(phase)
-            monomorphized += dd.symbol
             if (dd.name == nme.copy) addImplicitDefaults(dd, info)
           }
         case _ =>
@@ -207,7 +212,7 @@ class DataClassCopyPhase extends PluginPhase with IdentityDenotTransformer {
       case dd: DefDef if toDrop(dd).nonEmpty =>
         dropTypeParams(dd)
       case ta: TypeApply
-          if monomorphized.contains(ta.fun.symbol) &&
+          if isMonomorphized(ta.fun.symbol) &&
           ta.args.length == ta.fun.symbol.owner.typeParams.length =>
         transform(ta.fun)
       case tmpl: Template if addedDefaultGetters.contains(tmpl.constr.symbol.owner) =>
