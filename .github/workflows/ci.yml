@@ -13,6 +13,9 @@ jobs:
     name: Test
     steps:
     - uses: actions/checkout@v7
+      with:
+        # the plugin jar used by the tests embeds the version, computed from tags
+        fetch-depth: 0
     - uses: coursier/cache-action@v9
     - name: Compile
       run: |
@@ -20,6 +23,9 @@ jobs:
         ./mill test.testProjV1._.compile
         ./mill test.testProjV2._.compile
         ./mill test.userProjV1._.compile
+        ./mill test.compat._.test.testForked
+        ./mill test.plugin._.test.testForked
+        ./mill test.pluginUser._.testForked
 
   mima:
     runs-on: ubuntu-latest

@@ -8,13 +8,22 @@ import mill.*
 import mill.api.BuildCtx
 import mill.scalalib.*
 import mill.scalalib.publish.*
-import com.github.lolgab.mill.mima.{DirectMissingMethodProblem, Mima, ProblemFilter}
+import com.github.lolgab.mill.mima.{
+  DirectMissingMethodProblem,
+  Mima,
+  MissingClassProblem,
+  ProblemFilter
+}
 import coursier.version.Version
 import java.nio.file.Files
 import java.util.jar.{Attributes, JarOutputStream, Manifest}
 
 val scala2Versions = Seq("2.12.21", "2.13.18")
-val scalaVersions = scala2Versions :+ "3.8.4"
+// data-class is built with the Scala 3 LTS, whose TASTy files later Scala 3 versions can read
+val scala3Version = "3.3.9"
+val scalaVersions = scala2Versions :+ scala3Version
+// Compiler plugins are built against exact Scala versions
+val pluginScalaVersions = Seq(scala3Version, "3.8.4", "3.10.0")
 
 private def gitOutput(args: String*) =
   os.proc("git", args)
@@ -59,9 +68,7 @@ private def computePublishVersion =
     .orElse(latestTag.map(snapshotVersion))
     .getOrElse(sys.error("No v* tag found in the repository"))
 
-object dataClass extends Cross[DataClassModule](scalaVersions)
-
-trait DataClassModule extends CrossScalaModule, PublishModule, Mima {
+trait DataClassPublishModule extends PublishModule {
   def publishVersion = Task.Input(computePublishVersion)
 
   override def docJar = Task {
@@ -73,13 +80,36 @@ trait DataClassModule extends CrossScalaModule, PublishModule, Mima {
     PathRef(path)
   }
 
+  def pomDescription: String
+  def pomLicenses = Seq(License.`Apache-2.0`)
+
+  def pomSettings = PomSettings(
+    description = pomDescription,
+    organization = "io.github.alexarchambault",
+    url = "https://github.com/alexarchambault/data-class",
+    licenses = pomLicenses,
+    versionControl = VersionControl.github("alexarchambault", "data-class"),
+    developers = Seq(
+      Developer(
+        "alexarchambault",
+        "Alexandre Archambault",
+        "https://github.com/alexarchambault"
+      )
+    )
+  )
+}
+
+object dataClass extends Cross[DataClassModule](scalaVersions)
+
+trait DataClassModule extends CrossScalaModule, DataClassPublishModule, Mima {
+
   def sources = Task.Sources(
     BuildCtx.workspaceRoot / "src" / "main" /
       (if (crossValue.startsWith("3.")) "scala-3" else "scala-2")
   )
 
   def scalacOptions =
-    (if (scalaVersion().startsWith("3.")) Seq("-release:17", "-experimental")
+    (if (scalaVersion().startsWith("3.")) Seq("-release:8")
      else Seq("-target:jvm-1.8")) ++
       Seq("-deprecation") ++
       (if (scalaVersion().startsWith("2.13.")) Seq("-Ymacro-annotations") else Seq.empty)
@@ -102,7 +132,11 @@ trait DataClassModule extends CrossScalaModule, PublishModule, Mima {
       ProblemFilter.exclude[DirectMissingMethodProblem]("dataclass.data.this"),
       ProblemFilter.exclude[DirectMissingMethodProblem](
         "dataclass.Macros#Transformer.this"
-      )
+      ),
+      // On Scala 3, `since` used to be a type alias, in an otherwise empty
+      // package object, rather than a class
+      ProblemFilter.exclude[MissingClassProblem]("dataclass.since$package"),
+      ProblemFilter.exclude[MissingClassProblem]("dataclass.since$package$")
     )
   }
   def mimaPreviousVersions =
@@ -118,20 +152,8 @@ trait DataClassModule extends CrossScalaModule, PublishModule, Mima {
     else artifacts
   }
 
-  def pomSettings = PomSettings(
-    description = "Classes almost like case classes, designed for binary-compatible evolution",
-    organization = "io.github.alexarchambault",
-    url = "https://github.com/alexarchambault/data-class",
-    licenses = Seq(License.`Apache-2.0`),
-    versionControl = VersionControl.github("alexarchambault", "data-class"),
-    developers = Seq(
-      Developer(
-        "alexarchambault",
-        "Alexandre Archambault",
-        "https://github.com/alexarchambault"
-      )
-    )
-  )
+  def pomDescription =
+    "Classes almost like case classes, designed for binary-compatible evolution"
 
   object test extends ScalaTests {
     def sources =
@@ -149,6 +171,30 @@ trait DataClassModule extends CrossScalaModule, PublishModule, Mima {
   }
 }
 
+// Scala 3 compiler plugin generating binary-compatible overloads for `@since` parameters, and
+// implementing some `@data` arguments. Fork of com-lihaoyi/unroll, see plugin/README.md.
+object plugin extends Cross[PluginModule](pluginScalaVersions)
+
+trait PluginModule extends CrossScalaModule, DataClassPublishModule {
+  // Compiler plugins are built against exact Scala versions
+  def crossFullScalaVersion = true
+  def artifactName = "data-class-plugin"
+
+  def scalacOptions =
+    // the Scala 3 LTS still runs on Java 8
+    Seq(if (crossValue == scala3Version) "-release:8" else "-release:17") ++
+      Seq("-deprecation")
+
+  def compileMvnDeps = Seq(
+    mvn"org.scala-lang::scala3-compiler:${scalaVersion()}"
+  )
+
+  def pomDescription =
+    "Scala 3 compiler plugin generating binary-compatible overloads, for data-class"
+  // The plugin keeps the license of upstream com-lihaoyi/unroll
+  def pomLicenses = Seq(License.MIT)
+}
+
 object test extends Module {
   trait SmokeTestModule extends CrossScalaModule {
     def moduleDeps = Seq(dataClass())
@@ -158,26 +204,41 @@ object test extends Module {
 
   object testProjV1 extends Cross[TestProjV1Module](scala2Versions)
   trait TestProjV1Module extends SmokeTestModule {
-    def sources = Task.Sources("proj-v1/src/main/scala")
+    def sources = Task.Sources(BuildCtx.workspaceRoot / "test/proj-v1/src/main/scala")
   }
 
   object testProjV2 extends Cross[TestProjV2Module](scala2Versions)
   trait TestProjV2Module extends SmokeTestModule {
-    def sources = Task.Sources("proj-v2/src/main/scala")
+    def sources = Task.Sources(BuildCtx.workspaceRoot / "test/proj-v2/src/main/scala")
   }
 
   object userProjV1 extends Cross[UserProjV1Module](scala2Versions)
   trait UserProjV1Module extends CrossScalaModule {
     def moduleDeps = Seq(testProjV1())
-    def sources = Task.Sources("user-proj-v1/src/main/scala")
+    def sources = Task.Sources(BuildCtx.workspaceRoot / "test/user-proj-v1/src/main/scala")
   }
 
-  object compat extends Cross[CompatModule](scalaVersions)
+  // Sources shared by Scala 2 and Scala 3, compiled with the macros on Scala 2, and with
+  // the plugin on Scala 3
+  object compat extends Cross[CompatModule](scala2Versions ++ pluginScalaVersions)
   trait CompatModule extends CrossScalaModule {
-    def moduleDeps = Seq(dataClass())
+    def isScala3 = crossValue.startsWith("3.")
+    // Resolved outside of tasks, like pluginJars
+    def dataClassModule =
+      dataClass(if (isScala3) scala3Version else crossValue)
+    def moduleDeps = Seq(dataClassModule)
     def sources = Task.Sources()
-    def scalacOptions = dataClass().scalacOptions()
-    def scalacPluginMvnDeps = dataClass().scalacPluginMvnDeps()
+    def scalacOptions = Task {
+      if (isScala3) pluginScalacOptions(crossValue)()
+      else dataClassModule.scalacOptions()
+    }
+    def scalacPluginMvnDeps = Task {
+      if (isScala3) Seq.empty[Dep]
+      else dataClassModule.scalacPluginMvnDeps()
+    }
+    def scalacPluginClasspath = Task {
+      super.scalacPluginClasspath() ++ pluginJars(crossValue)()
+    }
     object test extends ScalaTests {
       def sources = Task.Sources(
         BuildCtx.workspaceRoot / "test/compat/src/test/scala"
@@ -185,5 +246,58 @@ object test extends Module {
       def mvnDeps = Seq(mvn"com.lihaoyi::utest:0.9.5")
       def testFramework = "utest.runner.Framework"
     }
+  }
+
+  // The plugin jar for Scala 3 versions, nothing for Scala 2 ones (resolved outside of tasks,
+  // as Mill registers task dependencies regardless of `if` branches)
+  def pluginJars(sv: String): Task[Seq[PathRef]] =
+    if (sv.startsWith("3.")) Task.Anon(Seq(build.plugin(sv).jar()))
+    else Task.Anon(Seq.empty[PathRef])
+
+  // Mill only derives `-Xplugin` options from scalacPluginMvnDeps, so pass the jar explicitly
+  def pluginScalacOptions(sv: String): Task[Seq[String]] = Task.Anon {
+    pluginJars(sv)().map(jar => s"-Xplugin:${jar.path}") ++
+      Seq("-Xplugin-require:data-class", "-deprecation")
+  }
+
+  // Modules compiled with the Scala 3 plugin, using the published data-class annotations
+  trait WithPluginModule extends CrossScalaModule {
+    def moduleDeps = Seq(dataClass(scala3Version))
+    def scalacPluginClasspath = Task {
+      super.scalacPluginClasspath() ++ pluginJars(crossValue)()
+    }
+    def scalacOptions = Task {
+      super.scalacOptions() ++ pluginScalacOptions(crossValue)()
+    }
+  }
+
+  // Tests of the features of the Scala 3 plugin: some of them change signatures, which only
+  // code compiled in a later compiler run sees, so the classes compiled with the plugin are
+  // used from a separate module
+  object plugin extends Cross[PluginTestModule](pluginScalaVersions)
+  trait PluginTestModule extends WithPluginModule {
+    object test extends ScalaTests, TestModule.Utest {
+      def mvnDeps = Seq(mvn"com.lihaoyi::utest:0.9.5")
+    }
+  }
+
+  // Binary compatibility checks of the code the Scala 3 plugin generates: pluginUser is
+  // compiled against pluginProjV1, and its tests are run against pluginProjV2
+  object pluginProjV1 extends Cross[PluginProjV1Module](pluginScalaVersions)
+  trait PluginProjV1Module extends WithPluginModule {
+    def sources = Task.Sources(BuildCtx.workspaceRoot / "test/plugin-proj-v1/src")
+  }
+
+  object pluginProjV2 extends Cross[PluginProjV2Module](pluginScalaVersions)
+  trait PluginProjV2Module extends WithPluginModule {
+    def sources = Task.Sources(BuildCtx.workspaceRoot / "test/plugin-proj-v2/src")
+  }
+
+  object pluginUser extends Cross[PluginUserModule](pluginScalaVersions)
+  trait PluginUserModule extends CrossScalaModule, TestModule.Utest {
+    def sources = Task.Sources(BuildCtx.workspaceRoot / "test/plugin-user/src")
+    def compileModuleDeps = Seq(pluginProjV1(crossValue))
+    def runModuleDeps = Seq(pluginProjV2(crossValue))
+    def mvnDeps = Seq(mvn"com.lihaoyi::utest:0.9.5")
   }
 }
