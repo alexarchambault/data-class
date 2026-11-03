@@ -20,7 +20,7 @@ import java.util.jar.{Attributes, JarOutputStream, Manifest}
 
 val scala2Versions = Seq("2.12.21", "2.13.18")
 // data-class is built with the Scala 3 LTS, whose TASTy files later Scala 3 versions can read
-val scala3Version = "3.3.9"
+val scala3Version = "3.9.0"
 val scalaVersions = scala2Versions :+ scala3Version
 // Compiler plugins are built against exact Scala versions
 val pluginScalaVersions = Seq(scala3Version, "3.8.4", "3.10.0")
