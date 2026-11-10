@@ -38,8 +38,14 @@ import scala.language.implicitConversions
  * `def copy(location: File, …)(implicit sync: Sync[F]): FileCache[F]` instead, with the `F` of the
  * class, that `Sync[F]` is then looked up for.
  *
- * `copy$default$n`, that holds the default value of the n-th parameter of `copy`, gets the same
- * treatment, and the type arguments the type checker passed to both are dropped.
+ * The type arguments the type checker passed to `copy` are dropped. `copy$default$n`, that holds
+ * the default value of the n-th parameter of `copy`, keeps its type parameters, and the type
+ * arguments passed to it: making it monomorphic would turn it from a method into a mere value,
+ * while the references to it the type checker created keep, for the whole run, the signature of
+ * a method. The pickler then writes these as `SELECTin`, without the signature that this form
+ * expects, and nothing can read the resulting TASTy trees back (like Scaladoc, which fails with
+ * `MatchError: copy$default$1`). Callers compiled in later runs, that see a monomorphic `copy`,
+ * have the type arguments of `copy$default$n` inferred from the type of the parameter.
  *
  * The parameters of a trailing implicit clause also get the corresponding field as default value,
  * as they do on Scala 2, so that `copy` can be called where no implicit is in scope at all.
@@ -67,7 +73,7 @@ class DataClassCopyPhase extends PluginPhase with IdentityDenotTransformer {
     cls.annotations.exists(_.symbol.fullName.toString == dataAnnotationName)
 
   /**
-   * Whether `sym` is a `copy` (or `copy$default$n`) this phase makes monomorphic.
+   * Whether `sym` is a `copy` this phase makes monomorphic.
    *
    * Only depends on things this phase leaves alone, so that it holds both before and after the
    * signatures are changed.
@@ -76,9 +82,7 @@ class DataClassCopyPhase extends PluginPhase with IdentityDenotTransformer {
     sym.exists && sym.isTerm && sym.is(Synthetic) && {
       val cls = sym.owner
       cls.isClass && cls.is(CaseClass) && !cls.is(Module) &&
-      cls.typeParams.nonEmpty && hasDataAnnotation(cls) &&
-      (sym.name == nme.copy ||
-      (sym.name.is(DefaultGetterName) && sym.name.exclude(DefaultGetterName) == nme.copy))
+      cls.typeParams.nonEmpty && hasDataAnnotation(cls) && sym.name == nme.copy
     }
 
   /**
@@ -127,14 +131,8 @@ class DataClassCopyPhase extends PluginPhase with IdentityDenotTransformer {
   /** The type `dd` gets once its type parameters are replaced by the `to` of its class */
   private def newInfo(dd: DefDef, to: List[Type])(using Context): Type =
     dd.symbol.info match {
-      // `copy$default$n` is nullary, and instantiating its `PolyType` leaves a plain type: it has
-      // to stay a method type, or the symbol stops being a method
-      case pt: PolyType =>
-        pt.instantiate(to) match {
-          case methodic: MethodicType => methodic
-          case result                 => ExprType(result)
-        }
-      case other => other
+      case pt: PolyType => pt.instantiate(to)
+      case other        => other
     }
 
   /**
@@ -198,7 +196,7 @@ class DataClassCopyPhase extends PluginPhase with IdentityDenotTransformer {
               param.copySymDenotation(info = param.info.subst(typeParams, to)).installAfter(phase)
             val info = newInfo(dd, to)
             dd.symbol.copySymDenotation(info = info, rawParamss = paramSymss).installAfter(phase)
-            if (dd.name == nme.copy) addImplicitDefaults(dd, info)
+            addImplicitDefaults(dd, info)
           }
         case _ =>
       }

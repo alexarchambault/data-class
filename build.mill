@@ -277,7 +277,11 @@ object test extends Module {
   object plugin extends Cross[PluginTestModule](pluginScalaVersions)
   trait PluginTestModule extends WithPluginModule {
     object test extends ScalaTests, TestModule.Utest {
-      def mvnDeps = Seq(mvn"com.lihaoyi::utest:0.9.5")
+      def mvnDeps = Seq(
+        mvn"com.lihaoyi::utest:0.9.5",
+        // to check that the TASTy trees of the classes compiled with the plugin can be read back
+        mvn"org.scala-lang::scala3-tasty-inspector:${scalaVersion()}"
+      )
     }
   }
 
