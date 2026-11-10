@@ -117,6 +117,10 @@ trait DataClassModule extends CrossScalaModule, DataClassPublishModule, Mima {
   def mvnDeps =
     if (crossValue.startsWith("3.")) Seq.empty
     else Seq(mvn"org.scala-lang:scala-reflect:${scalaVersion()}")
+  // The macros use some compiler internals, when expanded by the compiler
+  def compileMvnDeps =
+    if (crossValue.startsWith("3.")) Seq.empty
+    else Seq(mvn"org.scala-lang:scala-compiler:${scalaVersion()}")
 
   def scalacPluginMvnDeps =
     if (crossValue.startsWith("2.12."))
@@ -165,9 +169,22 @@ trait DataClassModule extends CrossScalaModule, DataClassPublishModule, Mima {
       else
         Seq(
           mvn"com.chuusai::shapeless:2.3.13",
-          mvn"com.lihaoyi::utest:0.9.5"
+          mvn"com.lihaoyi::utest:0.9.5",
+          // DocCommentTests runs Scaladoc
+          mvn"org.scala-lang:scala-compiler:${scalaVersion()}"
         )
     def testFramework = "utest.runner.Framework"
+    // The classpath and options DocCommentTests runs Scaladoc with, to expand the data-class
+    // macros
+    def forkArgs = Task {
+      val docScalacOptions =
+        this.scalacPluginClasspath().map(jar => s"-Xplugin:${jar.path}") ++
+          this.scalacOptions().filter(_ == "-Ymacro-annotations")
+      super.forkArgs() ++ Seq(
+        s"-Ddataclass.test.docClasspath=${this.runClasspath().map(_.path).mkString(java.io.File.pathSeparator)}",
+        s"-Ddataclass.test.docScalacOptions=${docScalacOptions.mkString(" ")}"
+      )
+    }
   }
 }
 
