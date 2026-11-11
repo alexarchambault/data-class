@@ -602,7 +602,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
         "optionSetters / deprecatedSetters parameters of @data annotation have no effect when setters is false"
       )
 
-    annottees.transformAnnottees(
+    val expansion = annottees.transformAnnottees(
       new Transformer(
         generateApplyMethods,
         generateOptionSetters,
@@ -614,7 +614,66 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
         generateSetters
       )
     )
+
+    annottees.headOption match {
+      case Some(cdef: ClassDef) => keepDocComment(cdef, expansion)
+      case _                    => expansion
+    }
   }
+
+  /** Keeps the doc comment of a class that isn't top-level
+    *
+    * Scaladoc parses doc comments as `DocDef` trees, wrapping the definitions
+    * they document. When expanding a macro annotation on a class that isn't
+    * top-level, scalac drops the symbol of the class, and enters the class of
+    * the expansion with a new one. It then doesn't recognize that class as the
+    * one the `DocDef` wraps, and drops the `DocDef`, along with the comment.
+    * Wrapping the class of the expansion in the `DocDef` keeps it.
+    *
+    * Top-level classes keep their symbol, and their `DocDef` with it. Their
+    * expansion is required to only consist of a class and its companion, so
+    * it's left alone.
+    */
+  private def keepDocComment(cdef: ClassDef, expansion: Tree): Tree =
+    if (c.internal.enclosingOwner.isPackageClass) expansion
+    else {
+      val global = c.universe.asInstanceOf[scala.tools.nsc.Global]
+      // position of the annotation, within the documented definition
+      val pos = c.enclosingPosition.asInstanceOf[global.Position]
+      // only Scaladoc keeps doc comments in trees
+      val docDefs =
+        if (!pos.isDefined) Nil
+        else
+          global.currentRun.units
+            .find(_.source == pos.source)
+            .toList
+            .flatMap { unit =>
+              unit.body.collect {
+                case docDef @ global.DocDef(_, defn: global.ClassDef)
+                    if defn.name.toString == cdef.name.toString &&
+                      docDef.pos.includes(pos) =>
+                  docDef
+              }
+            }
+      // innermost one, in case a class of the same name encloses that one
+      val docDefOpt =
+        if (docDefs.isEmpty) None
+        else Some(docDefs.minBy(d => d.pos.end - d.pos.start))
+      docDefOpt match {
+        case None         => expansion
+        case Some(docDef) =>
+          val Block(stats, expr) = expansion
+          val stats0 = stats.map {
+            case cls: ClassDef if cls.name == cdef.name =>
+              global
+                .DocDef(docDef.comment, cls.asInstanceOf[global.Tree])
+                .setPos(docDef.pos)
+                .asInstanceOf[Tree]
+            case other => other
+          }
+          Block(stats0, expr)
+      }
+    }
 
 }
 

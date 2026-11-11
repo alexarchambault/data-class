@@ -174,8 +174,13 @@ class UnrollPhase() extends PluginPhase {
         ref(defdef.symbol.owner.companionModule)
           .select(DefaultGetterName(termName("<init>"), n + defaultOffset))
       } else {
-        This(defdef.symbol.owner.asClass)
+        val getter = This(defdef.symbol.owner.asClass)
           .select(DefaultGetterName(defdef.name, n + defaultOffset))
+        // DataClassCopyPhase drops the type parameters of the `copy` of `@data` case classes, but
+        // not those of `copy$default$n`, that get the ones of the class
+        if (getter.tpe.widen.isInstanceOf[PolyType] && !paramLists.exists(isTypeClause))
+          getter.appliedToTypes(defdef.symbol.owner.typeParams.map(_.typeRef))
+        else getter
       }
 
       newParamLists

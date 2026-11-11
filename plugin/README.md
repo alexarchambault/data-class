@@ -34,7 +34,9 @@ It
     companions no longer make the plugin fail with "wrong number of arguments at unroll2";
   - a forwarder is not generated when an overload with the same signature is defined by hand
     (the shorter forwarders call that overload instead), so that hand-written overloads take
-    precedence rather than clashing with generated ones.
+    precedence rather than clashing with generated ones;
+  - the forwarders of a `copy` whose type parameters `DataClassCopyPhase` dropped pass the type
+    parameters of the class to the `copy$default$n` methods, that keep theirs.
 - Local addition (`DataClassCopyPhase.scala`): the `copy` of a `@data` case class with type
   parameters keeps the type parameters of the class rather than taking fresh ones, and the
   parameters of a trailing implicit clause get the corresponding field as default value, as the
