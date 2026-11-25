@@ -17,8 +17,12 @@ import utest._
 
 @data(setters = false) case class NoSetters(a: Int, @unroll b: Boolean = false)
 
-// On Scala 3, the builder can't be called from the module defining the class
-@data(nullOptionBuilderMethodName = "from") case class Built(
+// On Scala 3, the builder and copy-like methods can't be called from the module defining
+// the class
+@data(
+  nullOptionBuilderMethodName = "from",
+  nullOptionCopyMethodName = "update"
+) case class Built(
     a: Int = 0,
     @unroll b: Option[String] = None
 )

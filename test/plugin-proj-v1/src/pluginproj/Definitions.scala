@@ -12,7 +12,10 @@ object Methods {
   def greet(name: String): String = s"Hello $name"
 }
 
-@data(nullOptionBuilderMethodName = "from") case class Built(
+@data(
+  nullOptionBuilderMethodName = "from",
+  nullOptionCopyMethodName = "update"
+) case class Built(
     n: Int = 0,
     s: Option[String] = None
 )

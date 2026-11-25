@@ -11,7 +11,7 @@ class DataClassPlugin extends StandardPlugin {
   override def init(options: List[String]): List[PluginPhase] =
     List(
       new DataClassCopyPhase(),
-      new DataClassBuilderPhase(),
+      new DataClassNullOptionPhase(),
       new UnrollPhase(),
       new DataClassPhase()
     )

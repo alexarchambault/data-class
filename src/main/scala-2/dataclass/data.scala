@@ -33,7 +33,12 @@ class data(
       * `foo: Foo`). Primitive types are boxed, like `n: java.lang.Integer` for
       * a field `n: Int`. No such method is generated if `null`.
       */
-    nullOptionBuilderMethodName: String = null
+    nullOptionBuilderMethodName: String = null,
+    /** Name of a copy-like method to generate in the class, taking the same
+      * parameters as the `nullOptionBuilderMethodName` method, `null` keeping
+      * the current value of the field. No such method is generated if `null`.
+      */
+    nullOptionCopyMethodName: String = null
 ) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro Macros.impl
 }

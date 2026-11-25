@@ -23,8 +23,8 @@ import ast.tpd
 import scala.language.implicitConversions
 
 /**
- * Implements the `nullOptionBuilderMethodName` argument of the data-class `@data` annotation on
- * case classes, like the data-class macro does on Scala 2.
+ * Implements the `nullOptionBuilderMethodName` and `nullOptionCopyMethodName` arguments of the
+ * data-class `@data` annotation on case classes, like the data-class macro does on Scala 2.
  *
  * `@data(nullOptionBuilderMethodName = "from") case class Foo(n: Int = 2, s: Option[String])`
  * gets in its companion
@@ -42,26 +42,37 @@ import scala.language.implicitConversions
  * macro generates them as plain overloads, they are only visible in the bytecode: overloads that
  * callers see prevent implicit conversions to boxed types, like in `from(opt = 3L)`.
  *
- * As callers see the builder, it is added before the pickler. Only code compiled in a later
- * compiler run can call it, not code compiled along with the case class.
+ * `@data(nullOptionCopyMethodName = "update")` gets a copy-like method in the case class itself,
+ * with the parameters of the builder, `null` keeping the current value of the field:
+ * {{{
+ *   final def update(n: java.lang.Integer = null, s: String = null): Foo =
+ *     new Foo(if (n eq null) this.n else n.intValue, if (s eq null) this.s else Some(s))
+ * }}}
+ * Every field has a current value to fall back to, so that, unlike in the builder, fields with no
+ * default value accept `null` too. The parameters of a trailing implicit clause default to the
+ * corresponding fields, like those of `copy` (see `DataClassCopyPhase`).
+ *
+ * As callers see these methods, they are added before the pickler. Only code compiled in a later
+ * compiler run can call them, not code compiled along with the case class.
  */
-class DataClassBuilderPhase extends PluginPhase with IdentityDenotTransformer {
+class DataClassNullOptionPhase extends PluginPhase with IdentityDenotTransformer {
   import tpd.*
 
-  val phaseName = "dataclassBuilder"
+  val phaseName = "dataclassNullOption"
 
   override val runsAfter  = Set(dotty.tools.dotc.transform.PostTyper.name)
   override val runsBefore = Set(dotty.tools.dotc.transform.Pickler.name)
 
   override def changesMembers: Boolean = true
 
-  private val argumentName = "nullOptionBuilderMethodName"
+  private val builderArgumentName = "nullOptionBuilderMethodName"
+  private val copyArgumentName    = "nullOptionCopyMethodName"
 
-  /** How the builder method takes a field */
+  /** How the generated methods take a field */
   private sealed abstract class Plan extends Product with Serializable
-  /** Same type as the field, with the default value of the field if it has one */
+  /** Same type as the field, defaulting to the default (builder) or current (copy) value */
   private case object Kept extends Plan
-  /** A type accepting null, standing for the default value of the field (None for options) */
+  /** A type accepting null, standing for the default (builder) or current (copy) value */
   private final case class Nullable(isOption: Boolean, unbox: Option[TermName]) extends Plan
 
   private def boxed(using Context): List[(Symbol, String, String)] = List(
@@ -123,30 +134,150 @@ class DataClassBuilderPhase extends PluginPhase with IdentityDenotTransformer {
         }
     }
 
+  private def isDataCaseClass(cls: Symbol)(using Context): Boolean =
+    cls.exists && cls.isClass && cls.is(CaseClass) && !cls.is(ModuleClass) && DataAnnotation.isData(cls)
+
+  /** The method name passed as `argument` to the `@data` annotation of `cls`, if any */
+  private def methodName(cls: Symbol, argument: String)(using Context): Option[TermName] =
+    DataAnnotation.string(cls, argument).filter(_.nonEmpty).map(termName(_))
+
   override def transformTemplate(tmpl: Template)(using Context): Tree = {
-    val module = tmpl.constr.symbol.owner
-    if (!module.isClass || !module.is(ModuleClass)) tmpl
-    else {
-      val cls = module.companionClass
-      if (!cls.exists || !cls.is(CaseClass) || !DataAnnotation.isData(cls)) tmpl
+    val owner = tmpl.constr.symbol.owner
+    if (!owner.isClass) tmpl
+    else if (owner.is(ModuleClass)) {
+      val cls = owner.companionClass
+      if (!isDataCaseClass(cls)) tmpl
       else
-        DataAnnotation.string(cls, argumentName).filter(_.nonEmpty) match {
-          case Some(name) if !hasHandWritten(module, termName(name)) =>
-            cpy.Template(tmpl)(body = tmpl.body ++ builderDefs(cls.asClass, module.asClass, termName(name)))
+        methodName(cls, builderArgumentName) match {
+          case Some(name) if !hasHandWritten(owner, name) =>
+            cpy.Template(tmpl)(body = tmpl.body ++ builderDefs(cls.asClass, owner.asClass, name))
           case _ => tmpl
         }
     }
+    else if (!isDataCaseClass(owner)) tmpl
+    else
+      methodName(owner, copyArgumentName) match {
+        case Some(name) if !hasHandWritten(owner, name) =>
+          cpy.Template(tmpl)(body = tmpl.body ++ copyDefs(owner.asClass, name))
+        case _ => tmpl
+      }
   }
 
-  /** Nothing is generated if the companion defines a method with the same name itself */
-  private def hasHandWritten(module: Symbol, name: TermName)(using Context): Boolean =
-    module.info.decls.lookupAll(name).exists(s => s.is(Method) && !s.is(Synthetic))
+  /** Nothing is generated if the class or companion defines a method with the same name itself */
+  private def hasHandWritten(owner: Symbol, name: TermName)(using Context): Boolean =
+    owner.info.decls.lookupAll(name).exists(s => s.is(Method) && !s.is(Synthetic))
+
+  /** The parameters of the first term parameter clause of the constructor of `cls` */
+  private def fieldParams(cls: ClassSymbol)(using Context): List[Symbol] =
+    cls.primaryConstructor.paramSymss.dropWhile(_.headOption.exists(_.isType)).headOption.getOrElse(Nil)
+
+  private def sinceAnnotations(field: Symbol)(using Context) =
+    field.annotations.filter(_.symbol.fullName.toString == "dataclass.since")
+
+  /** Creates an instance, via the hand-written companion `apply` with `settersCallApply` */
+  private def construct(cls: ClassSymbol, targs: List[Type], argss: List[List[Tree]])(using Context): Tree = {
+    val viaApply =
+      if (DataAnnotation.isTrue(cls, "settersCallApply")) DataClassPhase.constructorLikeApply(cls)
+      else None
+    val fn = viaApply match {
+      case Some(apply) => ref(cls.companionModule).select(apply)
+      case None        => New(cls.typeRef).select(cls.primaryConstructor)
+    }
+    fn.appliedToTypes(targs).appliedToArgss(argss)
+  }
+
+  private def isNull(param: Tree)(using Context): Tree =
+    param.ensureConforms(defn.ObjectType).select(defn.Object_eq).appliedTo(nullLiteral)
+
+  /** The value passed for a field, from a parameter that may be null */
+  private def nullableArg(param: Tree, plan: Nullable, ifNull: => Tree)(using Context): Tree = {
+    val value = plan.unbox.fold(param)(u => param.select(u).appliedToNone)
+    If(isNull(param), ifNull, if (plan.isOption) someOf(value) else value)
+  }
+
+  /** The field of `cls` holding the constructor parameter named `name`, if it keeps one */
+  private def fieldOf(cls: ClassSymbol, name: Name)(using Context): Option[Symbol] = {
+    val field = cls.info.decls.lookup(name)
+    Option.when(field.exists && field.isTerm && field.is(ParamAccessor) && !field.is(Method))(field)
+  }
+
+  /** The copy-like method, and the getters of the default values of its parameters */
+  private def copyDefs(cls: ClassSymbol, name: TermName)(using Context): List[Tree] = {
+    val targs = cls.typeParams.map(_.typeRef)
+    val clause = cls.primaryConstructor.info match {
+      case pt: PolyType   => pt.instantiate(targs).asInstanceOf[MethodType]
+      case mt: MethodType => mt
+      case other          => throw new MatchError(other)
+    }
+    val fields = fieldParams(cls)
+    val plans  = clause.paramInfos.map(plan(_, hasDefault = true))
+    val info   = MethodType(clause.paramNames)(_ => plans.map(_._2), _ => clause.resType)
+
+    def current(field: Symbol): Option[Tree] = fieldOf(cls, field.name).map(This(cls).select(_))
+
+    val sym = newSymbol(cls, name, Method | Final, info, coord = cls.span).enteredAfter(this).asTerm
+    val method = DefDef(
+      sym,
+      paramss => {
+        val args = fields.zip(paramss.head).zip(plans).map {
+          case ((_, param), (Kept, _))                => param
+          case ((field, param), (plan: Nullable, _)) => nullableArg(param, plan, current(field).get)
+        }
+        construct(cls, targs, args :: paramss.tail)
+      }
+    )
+    val params = method.termParamss.head
+
+    for ((field, param) <- fields.zip(params); annot <- sinceAnnotations(field))
+      param.symbol.addAnnotation(annot)
+
+    def getter(idx: Int, tpe: Type, rhs: Tree, param: Symbol) = {
+      val getterSym = newSymbol(cls, DefaultGetterName(name, idx), Synthetic | Method, tpe, coord = cls.span)
+        .enteredAfter(this)
+        .asTerm
+      param.setFlag(HasDefault)
+      DefDef(getterSym, _ => rhs)
+    }
+
+    // `null` for nullable parameters, the current value of the field for the others
+    val getters = fields.zip(params).zip(plans).zipWithIndex.flatMap {
+      case (((field, param), (plan, _)), i) =>
+        val rhs = plan match {
+          case Nullable(_, _) => Some(nullLiteral)
+          case Kept           => current(field)
+        }
+        rhs.map(getter(i, ExprType(info.paramInfos(i)), _, param.symbol))
+    }
+
+    // like DataClassCopyPhase does for `copy`, the parameters of a trailing implicit clause
+    // default to the corresponding fields
+    val implicitGetters = info.resType match {
+      case implicits: MethodType
+          if implicits.isImplicitMethod && !implicits.resType.isInstanceOf[MethodType] =>
+        implicits.paramNames.zipWithIndex.flatMap { case (paramName, j) =>
+          fieldOf(cls, paramName).map { field =>
+            // like any default of a parameter of a later clause, the getter takes the parameters
+            // of the earlier ones
+            val getterType = MethodType(info.paramNames)(
+              g => info.paramInfos.map(_.substParams(info, g.paramRefs)),
+              g => implicits.paramInfos(j).substParams(info, g.paramRefs)
+            )
+            getter(info.paramNames.length + j, getterType, This(cls).select(field), method.termParamss(1)(j).symbol)
+          }
+        }
+      case _ => Nil
+    }
+
+    if (getters.nonEmpty || implicitGetters.nonEmpty) sym.setFlag(HasDefaultParams)
+
+    method :: getters ::: implicitGetters
+  }
 
   /** The builder method, and the getters of the default values of its parameters */
   private def builderDefs(cls: ClassSymbol, module: ClassSymbol, name: TermName)(using Context): List[Tree] = {
     val ctor     = cls.primaryConstructor
     val ctorInfo = ctor.info
-    val fields   = ctor.paramSymss.dropWhile(_.headOption.exists(_.isType)).headOption.getOrElse(Nil)
+    val fields   = fieldParams(cls)
 
     def firstClause(tp: Type): MethodType = tp match {
       case pt: PolyType   => firstClause(pt.resType)
@@ -157,18 +288,6 @@ class DataClassBuilderPhase extends PluginPhase with IdentityDenotTransformer {
 
     val plans: List[(Plan, Type)] =
       ctorClause.paramInfos.zip(fields).map { case (tp, field) => plan(tp, field.is(HasDefault)) }
-
-    def sinceAnnotations(field: Symbol) =
-      field.annotations.filter(_.symbol.fullName.toString == "dataclass.since")
-
-    val construct: (List[Type], List[List[Tree]]) => Tree =
-      if (DataAnnotation.isTrue(cls, "settersCallApply"))
-        DataClassPhase.constructorLikeApply(cls) match {
-          case Some(apply) =>
-            (targs, argss) => This(module).select(apply).appliedToTypes(targs).appliedToArgss(argss)
-          case None => viaNew(cls, ctor)
-        }
-      else viaNew(cls, ctor)
 
     def ctorDefault(idx: Int, targs: List[Type]): Tree = {
       val getter = module.info.decl(DefaultGetterName(nme.CONSTRUCTOR, idx)).symbol
@@ -203,15 +322,11 @@ class DataClassBuilderPhase extends PluginPhase with IdentityDenotTransformer {
         val args = fields.indices.toList.map { i =>
           val param = vparamss.head(i)
           plans(i)._1 match {
-            case Kept => param
-            case Nullable(isOption, unbox) =>
-              val value  = unbox.fold(param)(u => param.select(u).appliedToNone)
-              val isNull = param.ensureConforms(defn.ObjectType).select(defn.Object_eq).appliedTo(nullLiteral)
-              if (isOption) If(isNull, fieldDefault(i, targs), someOf(value))
-              else If(isNull, ctorDefault(i, targs), value)
+            case Kept           => param
+            case plan: Nullable => nullableArg(param, plan, fieldDefault(i, targs))
           }
         }
-        construct(targs, args :: vparamss.tail)
+        construct(cls, targs, args :: vparamss.tail)
       }
     )
     val params = builder.termParamss.head
@@ -254,7 +369,4 @@ class DataClassBuilderPhase extends PluginPhase with IdentityDenotTransformer {
       .select(nme.apply)
       .appliedToType(value.tpe.widen)
       .appliedTo(value)
-
-  private def viaNew(cls: ClassSymbol, ctor: Symbol)(using Context): (List[Type], List[List[Tree]]) => Tree =
-    (targs, argss) => New(cls.typeRef).select(ctor).appliedToTypes(targs).appliedToArgss(argss)
 }
