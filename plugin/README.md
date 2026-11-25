@@ -45,6 +45,14 @@ It
   `fileCache.copy(location = dir)` fails to find a `Sync[F]`. Since this changes a signature
   callers see, that phase runs before the pickler, unlike the other two. Only code compiled in a
   later compiler run sees the new signature, not code compiled along with the case class.
+- Local addition (`DataClassBuilderPhase.scala`): implements the `nullOptionBuilderMethodName`
+  argument of the data-class `@data` annotation, adding to the companion of the case class a
+  method whose parameters accept `null` (standing for the default value of the field, `None` for
+  options), with boxed types for primitive ones and `T` for `Option[T]`, as the Scala 2 macro
+  generates it. Like `DataClassCopyPhase`, it runs before the pickler, so that callers see that
+  method, and only code compiled in a later compiler run than the case class can call it. Its
+  parameters get the `@since` annotations of the fields, so that `unroll2` generates its
+  binary-compatible overloads.
 - Local addition (`DataClassPhase.scala`): implements two arguments of the data-class `@data`
   annotation:
   - `cachedHashCode = true`: the synthetic `hashCode` of the annotated case class is cached in a

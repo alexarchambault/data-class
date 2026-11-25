@@ -9,5 +9,10 @@ class DataClassPlugin extends StandardPlugin {
   override val description: String =
     "Generates binary-compatible overloads for @since parameters, and implements @data options"
   override def init(options: List[String]): List[PluginPhase] =
-    List(new DataClassCopyPhase(), new UnrollPhase(), new DataClassPhase())
+    List(
+      new DataClassCopyPhase(),
+      new DataClassBuilderPhase(),
+      new UnrollPhase(),
+      new DataClassPhase()
+    )
 }

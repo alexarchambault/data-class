@@ -21,3 +21,10 @@ object Methods {
   def greet(name: String, @since("2.0") punctuation: String = "!"): String =
     s"Hello $name$punctuation"
 }
+
+@data(nullOptionBuilderMethodName = "from") case class Built(
+    n: Int = 0,
+    s: Option[String] = None,
+    @since("2.0") b: Boolean = true,
+    opt: Option[Int] = None
+)

@@ -38,32 +38,9 @@ class DataClassPhase extends PluginPhase with IdentityDenotTransformer {
   // fromProduct gets rewritten here before unroll2 expands it
   override val runsBefore = Set("unroll2")
 
-  private val dataAnnotationName = "dataclass.data"
-
-  private def isTrue(tree: Tree): Boolean = tree match {
-    case Literal(Constant(true)) => true
-    case _                       => false
-  }
-
   /** Whether the `@data` annotation of `cls`, if any, sets its `param` boolean argument */
   private def dataArgument(cls: Symbol, param: String)(using Context): Boolean =
-    cls.annotations.exists { annot =>
-      annot.symbol.fullName.toString == dataAnnotationName && {
-        val args = annot.tree match {
-          case Apply(_, args)           => args
-          case Block(_, Apply(_, args)) => args
-          case _                        => Nil
-        }
-        val named = args.exists {
-          case NamedArg(name, arg) => name.toString == param && isTrue(arg)
-          case _                   => false
-        }
-        // after typing, named arguments are usually reordered into positional ones
-        val paramNames = annot.symbol.primaryConstructor.info.firstParamNames
-        val idx        = paramNames.indexWhere(_.toString == param)
-        named || (idx >= 0 && args.lift(idx).exists(isTrue))
-      }
-    }
+    DataAnnotation.isTrue(cls, param)
 
   override def transformTemplate(tmpl: Template)(using Context): Tree = {
     val cls = tmpl.constr.symbol.owner
@@ -77,13 +54,7 @@ class DataClassPhase extends PluginPhase with IdentityDenotTransformer {
     }
   }
 
-  /** The hand-written companion `apply` with the constructor's signature, if any */
-  private def constructorLikeApply(cls: ClassSymbol)(using Context): Option[Symbol] = {
-    val constructor = cls.primaryConstructor
-    cls.companionModule.info.decls.lookupAll(nme.apply).find { s =>
-      s.is(Method) && !s.is(Synthetic) && s.info.matches(constructor.info)
-    }
-  }
+  import DataClassPhase.constructorLikeApply
 
   /** Replaces a `new C[T](args)(moreArgs)` call by `C.apply[T](args)(moreArgs)` */
   private def viaApply(tree: Tree, cls: ClassSymbol, apply: Symbol)(using Context): Option[Tree] =
@@ -169,6 +140,17 @@ class DataClassPhase extends PluginPhase with IdentityDenotTransformer {
           val cachedHashDef = cpy.DefDef(hashDef)(rhs = rhs)
           cpy.Template(tmpl)(body = fieldDef :: tmpl.body.map(t => if (t eq hashDef) cachedHashDef else t))
       }
+    }
+  }
+}
+
+object DataClassPhase {
+
+  /** The hand-written companion `apply` with the constructor's signature, if any */
+  private[plugin] def constructorLikeApply(cls: ClassSymbol)(using Context): Option[Symbol] = {
+    val constructor = cls.primaryConstructor
+    cls.companionModule.info.decls.lookupAll(nme.apply).find { s =>
+      s.is(Method) && !s.is(Synthetic) && s.info.matches(constructor.info)
     }
   }
 }

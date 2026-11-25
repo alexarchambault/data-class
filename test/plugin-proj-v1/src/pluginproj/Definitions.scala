@@ -11,3 +11,8 @@ final class Bar(val a: Int, @since val b: Int = 1) {
 object Methods {
   def greet(name: String): String = s"Hello $name"
 }
+
+@data(nullOptionBuilderMethodName = "from") case class Built(
+    n: Int = 0,
+    s: Option[String] = None
+)
