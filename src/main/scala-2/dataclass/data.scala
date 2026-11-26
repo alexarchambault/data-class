@@ -26,7 +26,19 @@ class data(
       */
     deprecatedSettersSince: String = "",
     /** Whether to generate `withFoo(foo: Foo)` setters at all */
-    setters: Boolean = true
+    setters: Boolean = true,
+    /** Name of a method to generate in the companion, creating instances from
+      * parameters accepting `null`, `null` standing for the default value of
+      * the field (`None` for fields like `foo: Option[Foo]`, whose parameter is
+      * `foo: Foo`). Primitive types are boxed, like `n: java.lang.Integer` for
+      * a field `n: Int`. No such method is generated if `null`.
+      */
+    nullOptionBuilderMethodName: String = null,
+    /** Name of a copy-like method to generate in the class, taking the same
+      * parameters as the `nullOptionBuilderMethodName` method, `null` keeping
+      * the current value of the field. No such method is generated if `null`.
+      */
+    nullOptionCopyMethodName: String = null
 ) extends StaticAnnotation {
   def macroTransform(annottees: Any*): Any = macro Macros.impl
 }

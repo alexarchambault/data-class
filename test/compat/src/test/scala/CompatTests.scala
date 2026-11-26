@@ -17,6 +17,16 @@ import utest._
 
 @data(setters = false) case class NoSetters(a: Int, @unroll b: Boolean = false)
 
+// On Scala 3, the builder and copy-like methods can't be called from the module defining
+// the class
+@data(
+  nullOptionBuilderMethodName = "from",
+  nullOptionCopyMethodName = "update"
+) case class Built(
+    a: Int = 0,
+    @unroll b: Option[String] = None
+)
+
 object CompatTests extends TestSuite {
   val tests = Tests {
     test("construction") {
@@ -41,6 +51,9 @@ object CompatTests extends TestSuite {
 
       val noSetters = NoSetters(1, true)
       assert(noSetters.copy(2) == NoSetters(2, true))
+
+      val built = Built(1, Some("a"))
+      assert(built.copy(a = 2) == Built(2, Some("a")))
     }
   }
 }

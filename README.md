@@ -80,8 +80,9 @@ enabled, rather than silently not generating the overloads.
 
 Besides the binary-compatible overloads of `@since` parameters (of case class
 constructors, `apply`, `copy`, `fromProduct`, of the constructors of final
-classes, and of final methods), the plugin implements the `cachedHashCode` and
-`settersCallApply` arguments of `@data` on case classes, and makes the `copy`
+classes, and of final methods), the plugin implements the `cachedHashCode`,
+`settersCallApply`, `nullOptionBuilderMethodName` and `nullOptionCopyMethodName` arguments
+of `@data` on case classes, and makes the `copy`
 method of `@data` case classes with type parameters use those of the class
 (along with defaulting implicit parameters to the corresponding fields), like on
 Scala 2. No `with` setters are generated on Scala 3. See
@@ -188,6 +189,68 @@ def withN(n: Int) = new Foo(n = n, s = s)
 With `@data(setters = false)`, no `with` method is generated at all, so that only
 `copy` can be used to create updated instances. `optionSetters` and
 `deprecatedSetters` have no effect then.
+
+With `@data(nullOptionBuilderMethodName = "from")`, a method named `from` is added
+to the companion. All of its parameters accept `null`, which stands for the default
+value of the field, or `None` for an `Option[T]` field without a default value.
+Primitive types are boxed, and `Option[T]` fields take a `T`, like
+```scala
+@data(nullOptionBuilderMethodName = "from")
+class Foo(n: Int = 2, s: Option[String] = None, flag: Option[Boolean] = None)
+```
+which generates
+```scala
+object Foo {
+  def from(
+      n: java.lang.Integer = null,
+      s: String = null,
+      flag: java.lang.Boolean = null
+  ): Foo =
+    new Foo(
+      if (n == null) 2 else n.intValue,
+      if (s == null) None else Some(s),
+      if (flag == null) None else Some(flag.booleanValue)
+    )
+}
+```
+so that `Foo.from(s = "a")` creates `Foo(2, Some("a"), None)`. Some fields keep
+their own type and default value: those that aren't options and have no default value
+(their parameter is then required), and those whose type is a type parameter of the
+class (or an `Option` of one), as it can be a primitive type. With `settersCallApply`,
+the builder creates instances via the companion `apply`. Like `apply`, the builder gets
+binary-compatible overloads for `@since` fields. Nothing is generated if the companion
+already defines a method with that name.
+
+With `@data(nullOptionCopyMethodName = "update")`, a copy-like method named `update`
+is added to the class. It takes the same parameters as the builder above, except that
+`null` keeps the current value of the field, like
+```scala
+@data(nullOptionCopyMethodName = "update")
+class Foo(n: Int, s: Option[String])
+```
+which generates
+```scala
+def update(n: java.lang.Integer = null, s: String = null): Foo =
+  new Foo(
+    if (n == null) this.n else n.intValue,
+    if (s == null) this.s else Some(s)
+  )
+```
+so that `foo.update(s = "a")` returns a copy of `foo` with `s` set to `Some("a")`. As every
+field has a current value, fields with no default value accept `null` too. Fields whose
+type is a type parameter of the class (or an `Option` of one) keep their type, and
+default to their current value, like the parameters of implicit parameter lists. A field
+can't be reset to `None` with this method, use `copy` for that. The two methods can be
+used together, and like the builder, this method gets binary-compatible overloads for
+`@since` fields, and isn't generated if the class already defines a method with that
+name.
+
+On Scala 2, type trees aren't typed yet when the macro runs, so primitive types are
+recognized by their names (`Int`, `scala.Int`, …). A type alias of a primitive type
+makes the generated code fail to compile. On Scala 3, the data-class compiler plugin
+generates these methods, but only code compiled in a later compiler run than the class
+can call them, typically code in other modules. Their `@since` overloads are only
+visible in the bytecode on Scala 3, rather than being regular overloads like on Scala 2.
 
 ### shapeless
 

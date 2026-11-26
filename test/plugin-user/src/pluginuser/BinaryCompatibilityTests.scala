@@ -34,6 +34,18 @@ object BinaryCompatibilityTests extends TestSuite {
       assert(s == "a")
       assert(b)
     }
+    test("null option builder") {
+      assert(Built.from().toString == "Built(0,None,true,None)")
+      assert(Built.from(n = 2).toString == "Built(2,None,true,None)")
+      assert(Built.from(2, "a").toString == "Built(2,Some(a),true,None)")
+      assert(Built.from(s = "a").toString == "Built(0,Some(a),true,None)")
+    }
+    test("null option copy") {
+      val built = Built.from(1, "a")
+      assert(built.update().toString == "Built(1,Some(a),true,None)")
+      assert(built.update(n = 2).toString == "Built(2,Some(a),true,None)")
+      assert(built.update(null, "b").toString == "Built(1,Some(b),true,None)")
+    }
     test("method") {
       assert(Methods.greet("you") == "Hello you!")
     }

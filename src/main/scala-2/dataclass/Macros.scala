@@ -21,7 +21,9 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       deprecatedSetters: Boolean,
       deprecatedSettersMessage: String,
       deprecatedSettersSince: String,
-      generateSetters: Boolean
+      generateSetters: Boolean,
+      nullOptionBuilderMethodName: Option[String],
+      nullOptionCopyMethodName: Option[String]
   ) extends ImplTransformer {
     override def transformClass(
         cdef: ClassDef,
@@ -313,6 +315,10 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             )
           }
 
+          val sinceIndices = paramss.head.zipWithIndex
+            .filter(_._1.mods.annotations.exists(isSinceAnnotation))
+            .map(_._2)
+
           val splits = {
 
             @tailrec
@@ -334,13 +340,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               paramss.head,
               0,
               None
-            ).toSeq ++
-              paramss.head.zipWithIndex
-                .filter(
-                  _._1.mods.annotations
-                    .exists(isSinceAnnotation)
-                )
-                .map(_._2)
+            ).toSeq ++ sinceIndices
 
             splits0.distinct.sorted
           }
@@ -418,19 +418,20 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             }
           }
 
+          def copyParam(p: ValDef, withDefault: Boolean): ValDef = {
+            val flags =
+              if (p.mods.hasFlag(Flag.IMPLICIT)) Flag.IMPLICIT
+              else NoFlags
+            val rhs = if (withDefault) q"this.${p.name}" else EmptyTree
+            ValDef(Modifiers(flags), p.name, p.tpt, rhs)
+          }
+
           // No copy methods if the class defines copy itself. When settersCallApply is set, the
           // generated copy methods go through apply, like the setters, rather than the constructor.
           val copyMethods =
             if (hasCopy) Nil
             else {
               val len = allParams0.head.length
-              def copyParam(p: ValDef, withDefault: Boolean): ValDef = {
-                val flags =
-                  if (p.mods.hasFlag(Flag.IMPLICIT)) Flag.IMPLICIT
-                  else NoFlags
-                val rhs = if (withDefault) q"this.${p.name}" else EmptyTree
-                ValDef(Modifiers(flags), p.name, p.tpt, rhs)
-              }
               splits.map { idx =>
                 val firstParamList: List[ValDef] =
                   allParams0.head.take(idx).map(copyParam(_, idx == len))
@@ -452,6 +453,45 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               }
             }
 
+          val hasNullOptionCopy = nullOptionCopyMethodName.exists { name =>
+            stats.exists {
+              case DefDef(_, nme, _, _, _, _) =>
+                nme.decodedName.toString == name
+              case _ => false
+            }
+          }
+
+          // With nullOptionCopyMethodName, a copy-like method taking the parameters of the
+          // nullOptionBuilderMethodName method, null keeping the current value of the field.
+          // Like the builder, it has overloads for the @since splits, and only the one with all
+          // parameters has default values.
+          val nullOptionCopyMethods =
+            if (hasNullOptionCopy) Nil
+            else
+              nullOptionCopyMethodName.toList.flatMap { name =>
+                val len = paramss.head.length
+                val tparamNames =
+                  tparams.map(_.name.decodedName.toString).toSet
+                (sinceIndices :+ len).distinct.sorted.map { idx =>
+                  val (params, args) = paramss.head
+                    .take(idx)
+                    .map(nullOptionCopyParam(_, tparamNames, idx == len))
+                    .unzip
+                  val retained =
+                    paramss.head.drop(idx).map(p => q"this.${p.name}")
+                  val remainingParams =
+                    allParams0.tail.map(_.map(copyParam(_, idx == len)))
+                  val allArgs = (args ++ retained) :: remainingParams.map(
+                    _.map(p => q"${p.name}")
+                  )
+                  val body =
+                    if (generatedSettersCallApply)
+                      q"${tpname.toTermName}[..$tparamsRef](...$allArgs)"
+                    else q"new $tpname[..$tparamsRef](...$allArgs)"
+                  q"def ${TermName(name)}(...${params :: remainingParams}): $tpname[..$tparamsRef] = $body"
+                }
+              }
+
           val mods0 = Modifiers(
             mods.flags.|(Flag.FINAL),
             mods.privateWithin,
@@ -467,6 +507,7 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
               ..$extraConstructors
               ..$stats
               ..$copyMethods
+              ..$nullOptionCopyMethods
               ..$setters
               ..$toStringMethod
               ..$canEqualMethod
@@ -501,8 +542,45 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
             else
               Nil
 
+          val hasBuilder = nullOptionBuilderMethodName.exists { name =>
+            mstats.exists {
+              case DefDef(_, nme, _, _, _, _) =>
+                nme.decodedName.toString == name
+              case _ => false
+            }
+          }
+
+          // With nullOptionBuilderMethodName, a method whose parameters accept null, standing
+          // for the default value of the field (None for fields like `foo: Option[T]`), with
+          // boxed types instead of primitive ones. It has overloads for the @since splits, for
+          // binary compatibility, and only the one with all parameters has default values.
+          val builderMethods =
+            if (hasBuilder) Nil
+            else
+              nullOptionBuilderMethodName.toList.flatMap { name =>
+                val len = paramss.head.length
+                val tparamNames =
+                  tparams.map(_.name.decodedName.toString).toSet
+                (sinceIndices :+ len).distinct.sorted.map { idx =>
+                  val (params, args) = paramss.head
+                    .take(idx)
+                    .map(builderParam(_, tparamNames, idx == len))
+                    .unzip
+                  val dropped = paramss.head.drop(idx).map(_.rhs.duplicate)
+                  val allArgs =
+                    (args ++ dropped) :: paramss.tail.map(
+                      _.map(p => q"${p.name}")
+                    )
+                  val body =
+                    if (generatedSettersCallApply)
+                      q"${tpname.toTermName}[..$tparamsRef](...$allArgs)"
+                    else q"new $tpname[..$tparamsRef](...$allArgs)"
+                  q"def ${TermName(name)}[..$tparams](...${params :: paramss.tail}): $tpname[..$tparamsRef] = $body"
+                }
+              }
+
           val mdef0 =
-            q"$mmods object $mname extends { ..$mearlydefns } with ..$mparents { $mself => ..$mstats; ..$applyMethods }"
+            q"$mmods object $mname extends { ..$mearlydefns } with ..$mparents { $mself => ..$mstats; ..$applyMethods; ..$builderMethods }"
 
           if (debug)
             System.err.println(mdef0)
@@ -588,6 +666,33 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       .lastOption
       .getOrElse("")
 
+    def methodNameValue(name: String, value: Tree): Option[String] =
+      value match {
+        case Literal(Constant(null))                        => None
+        case Literal(Constant(str: String)) if str.nonEmpty => Some(str)
+        case _                                              =>
+          c.abort(
+            value.pos,
+            s"$name parameter of @data annotation must be null or a non-empty string literal"
+          )
+      }
+
+    val nullOptionBuilderMethodName = params
+      .collect {
+        case q"nullOptionBuilderMethodName=$value" =>
+          methodNameValue("nullOptionBuilderMethodName", value)
+      }
+      .lastOption
+      .flatten
+
+    val nullOptionCopyMethodName = params
+      .collect {
+        case q"nullOptionCopyMethodName=$value" =>
+          methodNameValue("nullOptionCopyMethodName", value)
+      }
+      .lastOption
+      .flatten
+
     if (
       !deprecatedSetters && (deprecatedSettersMessage.nonEmpty || deprecatedSettersSince.nonEmpty)
     )
@@ -611,7 +716,9 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
         deprecatedSetters,
         deprecatedSettersMessage,
         deprecatedSettersSince,
-        generateSetters
+        generateSetters,
+        nullOptionBuilderMethodName,
+        nullOptionCopyMethodName
       )
     )
 
@@ -619,6 +726,155 @@ private[dataclass] class Macros(val c: Context) extends ImplTransformers {
       case Some(cdef: ClassDef) => keepDocComment(cdef, expansion)
       case _                    => expansion
     }
+  }
+
+  /** The `T` of a type tree like `Option[T]` */
+  private def optionElementType(tpt: Tree): Option[Tree] =
+    tpt match {
+      case AppliedTypeTree(Ident(TypeName("Option")), List(wrapped)) =>
+        Some(wrapped)
+      case AppliedTypeTree(
+            Select(Ident(TermName("scala")), TypeName("Option")),
+            List(wrapped)
+          ) =>
+        Some(wrapped)
+      case _ => None
+    }
+
+  /** Boxed type and unboxing method of the primitive types */
+  private val boxedTypes = Map(
+    "Boolean" -> (TypeName("Boolean"), TermName("booleanValue")),
+    "Byte" -> (TypeName("Byte"), TermName("byteValue")),
+    "Short" -> (TypeName("Short"), TermName("shortValue")),
+    "Char" -> (TypeName("Character"), TermName("charValue")),
+    "Int" -> (TypeName("Integer"), TermName("intValue")),
+    "Long" -> (TypeName("Long"), TermName("longValue")),
+    "Float" -> (TypeName("Float"), TermName("floatValue")),
+    "Double" -> (TypeName("Double"), TermName("doubleValue"))
+  )
+
+  /** The name of a type tree like `Int`, `scala.Int`, or `_root_.scala.Int` */
+  private def scalaTypeName(tpt: Tree): Option[String] =
+    tpt match {
+      case Ident(TypeName(name))                            => Some(name)
+      case Select(Ident(TermName("scala")), TypeName(name)) => Some(name)
+      case Select(
+            Select(Ident(termNames.ROOTPKG), TermName("scala")),
+            TypeName(name)
+          ) =>
+        Some(name)
+      case _ => None
+    }
+
+  /** How a value of type `tpt` can be passed as a parameter that accepts null
+    *
+    * Type trees aren't typed yet when macro annotations are expanded, so
+    * primitive types are recognized by their names only. `None` for types that
+    * can't hold null, like `Unit`, or type parameters of the class, that can be
+    * instantiated with primitive types.
+    */
+  private def nullableType(
+      tpt: Tree,
+      tparamNames: Set[String]
+  ): Option[(Tree, Tree => Tree)] =
+    tpt match {
+      case Ident(name: TypeName) if tparamNames(name.decodedName.toString) =>
+        None
+      case _ =>
+        scalaTypeName(tpt) match {
+          case Some("Unit") | Some("Nothing") | Some("Any") | Some("AnyVal") =>
+            None
+          case Some(name) if boxedTypes.contains(name) =>
+            val (boxed, unbox) = boxedTypes(name)
+            Some((tq"_root_.java.lang.$boxed", (t: Tree) => q"$t.$unbox"))
+          case _ =>
+            Some((tpt, (t: Tree) => t))
+        }
+    }
+
+  /** The parameter of the null-accepting builder method for a field, and the
+    * argument passed to the constructor for it
+    */
+  private def builderParam(
+      p: ValDef,
+      tparamNames: Set[String],
+      withDefault: Boolean
+  ): (ValDef, Tree) = {
+    def kept(default: Tree) = {
+      val rhs = if (withDefault) default.duplicate else EmptyTree
+      val flags =
+        if (p.mods.hasFlag(Flag.IMPLICIT)) Flag.IMPLICIT | Flag.PARAM
+        else Flag.PARAM
+      (ValDef(Modifiers(flags), p.name, p.tpt, rhs), q"${p.name}")
+    }
+    def nullable(tpe: Tree, value: Tree, default: Tree) = {
+      val rhs = if (withDefault) q"null" else EmptyTree
+      val arg = q"if (${p.name} == null) ${default.duplicate} else $value"
+      (ValDef(Modifiers(Flag.PARAM), p.name, tpe, rhs), arg)
+    }
+    val none = q"_root_.scala.None"
+    if (p.mods.hasFlag(Flag.IMPLICIT)) kept(p.rhs)
+    else
+      optionElementType(p.tpt) match {
+        case Some(elem) =>
+          val default = if (p.rhs.isEmpty) none else p.rhs
+          nullableType(elem, tparamNames) match {
+            case Some((tpe, unbox)) =>
+              nullable(
+                tpe,
+                q"_root_.scala.Some(${unbox(q"${p.name}")})",
+                default
+              )
+            case None => kept(default)
+          }
+        case None =>
+          nullableType(p.tpt, tparamNames) match {
+            case Some((tpe, unbox)) if p.rhs.nonEmpty =>
+              nullable(tpe, unbox(q"${p.name}"), p.rhs)
+            case _ => kept(p.rhs)
+          }
+      }
+  }
+
+  /** The parameter of the null-accepting copy method for a field, and the
+    * argument passed to the constructor for it
+    *
+    * Unlike the builder, every field has a value to fall back to, the current
+    * one, so that all fields whose type can hold null accept it.
+    */
+  private def nullOptionCopyParam(
+      p: ValDef,
+      tparamNames: Set[String],
+      withDefault: Boolean
+  ): (ValDef, Tree) = {
+    val current = q"this.${p.name}"
+    def kept = {
+      val rhs = if (withDefault) current else EmptyTree
+      val flags =
+        if (p.mods.hasFlag(Flag.IMPLICIT)) Flag.IMPLICIT | Flag.PARAM
+        else Flag.PARAM
+      (ValDef(Modifiers(flags), p.name, p.tpt, rhs), q"${p.name}")
+    }
+    def nullable(tpe: Tree, value: Tree) = {
+      val rhs = if (withDefault) q"null" else EmptyTree
+      val arg = q"if (${p.name} == null) $current else $value"
+      (ValDef(Modifiers(Flag.PARAM), p.name, tpe, rhs), arg)
+    }
+    if (p.mods.hasFlag(Flag.IMPLICIT)) kept
+    else
+      optionElementType(p.tpt) match {
+        case Some(elem) =>
+          nullableType(elem, tparamNames) match {
+            case Some((tpe, unbox)) =>
+              nullable(tpe, q"_root_.scala.Some(${unbox(q"${p.name}")})")
+            case None => kept
+          }
+        case None =>
+          nullableType(p.tpt, tparamNames) match {
+            case Some((tpe, unbox)) => nullable(tpe, unbox(q"${p.name}"))
+            case None               => kept
+          }
+      }
   }
 
   /** Keeps the doc comment of a class that isn't top-level
